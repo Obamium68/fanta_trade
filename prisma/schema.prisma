@@ -1,0 +1,124 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  passwordHash String
+  girone    Girone
+  credits   Int      @default(600)
+
+  members   TeamMember[]
+  players   TeamPlayer[]
+  tradesSent     Trade[] @relation("FromTeam")
+  tradesReceived Trade[] @relation("ToTeam")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    Int
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+}
+
+model Player {
+  id        Int      @id
+  firstName String
+  lastName  String
+  value     Int @default(0)
+  role      RolePlayer
+  teams     TeamPlayer[]
+
+  tradeSent Trade[] @relation("PlayerFrom")
+  tradeReceived Trade[] @relation("PlayerTo")
+}
+
+model TeamPlayer {
+  id        Int      @id @default(autoincrement())
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    Int
+  player    Player   @relation(fields: [playerId], references: [id])
+  playerId  Int
+
+  @@unique([teamId, playerId])
+}
+
+model Trade {
+  id           Int        @id @default(autoincrement())
+  fromTeam     Team       @relation("FromTeam", fields: [fromTeamId], references: [id])
+  fromTeamId   Int
+  toTeam       Team       @relation("ToTeam", fields: [toTeamId], references: [id])
+  toTeamId     Int
+
+  playerFrom   Player     @relation("PlayerFrom", fields: [playerFromId], references: [id])
+  playerFromId Int
+  playerTo     Player     @relation("PlayerTo", fields: [playerToId], references: [id])
+  playerToId   Int
+
+  credits      Int        @default(0)
+  status       TradeStatus @default(PENDING)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  logs         TradeLog[]
+}
+
+model TradeLog {
+  id        Int      @id @default(autoincrement())
+  trade     Trade    @relation(fields: [tradeId], references: [id])
+  tradeId   Int
+  action    String
+  timestamp DateTime @default(now())
+}
+
+model TradePhase {
+  id        Int      @id @default(autoincrement())
+  startTime DateTime?
+  endTime   DateTime?
+  status    PhaseStatus @default(CLOSED)
+}
+
+enum Girone {
+  A
+  B
+  C
+}
+
+enum RolePlayer {
+  PORTIERE
+  DIFENSORE
+  CENTROCAMPISTA
+  ATTACCANTE
+}
+
+enum TradeStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  APPROVED
+}
+
+enum PhaseStatus {
+  OPEN
+  CLOSED
+}
