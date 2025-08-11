@@ -112,22 +112,22 @@ export async function POST(req: Request) {
         const result = await prisma.player.upsert({
           where: { id },
           update: {
-            firstName: row.Nome.trim(),
-            lastName: row.Squadra.trim(), // Usando la squadra come cognome
+            lastname: row.Nome.trim(),
+            realteam: row.Squadra.trim(), // Usando la squadra come cognome
             role: roleMap[row.R],
           },
           create: {
             id,
-            firstName: row.Nome.trim(),
-            lastName: row.Squadra.trim(), // Usando la squadra come cognome
+            lastname: row.Nome.trim(),
+            realteam: row.Squadra.trim(), // Usando la squadra come cognome
             role: roleMap[row.R],
           },
         });
         
         console.log(`✅ Giocatore processato con successo:`, {
           id: result.id,
-          firstName: result.firstName,
-          lastName: result.lastName,
+          lastname: result.lastname,
+          realteam: result.realteam,
           role: result.role
         });
         

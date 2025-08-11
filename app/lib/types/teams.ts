@@ -1,78 +1,53 @@
 // types/team.ts
-import { Girone } from '@prisma/client';
-
-// Request types
-export interface CreateTeamRequest {
-  name: string;
-  password: string;
-  girone: Girone;
-  credits?: number;
+export enum Girone {
+  A = "A",
+  B = "B",
+  C = "C"
 }
 
-export interface UpdateTeamRequest {
+export interface TeamMember {
+  id: number;
+  teamId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  passwordHash?: string;
+  girone: Girone;
+  credits: number;
+  members?: TeamMember[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamsResponse {
+  teams: Team[];
+  total: number;
+}
+
+export interface TeamUpdateRequest {
   name?: string;
   password?: string;
   girone?: Girone;
   credits?: number;
 }
 
-// Response types
-export interface TeamResponse {
-  id: number;
-  name: string;
-  girone: Girone;
-  credits: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TeamWithDetailsResponse extends TeamResponse {
-  members: Array<{
-    id: number;
-    user: {
-      id: number;
-      email: string;
-      username: string;
-    };
-    role: string;
-    joinedAt: string;
-  }>;
-  players: Array<{
-    id: number;
-    player: {
-      id: number;
-      firstName: string;
-      lastName: string;
-      role: string;
-    };
-    addedAt: string;
-  }>;
-  _count: {
-    tradesSent: number;
-    tradesReceived: number;
-  };
-}
-
-export interface CreateTeamResponse {
+export interface TeamUpdateResponse {
   message: string;
-  team: TeamResponse;
+  team: Team;
 }
 
-export interface UpdateTeamResponse {
-  message: string;
-  team: TeamResponse;
-}
-
-export interface GetTeamsResponse {
-  teams: Array<TeamResponse & {
-    _count: {
-      members: number;
-      players: number;
-    };
-  }>;
-}
-
-export interface ErrorResponse {
+export interface ApiError {
   error: string;
   details?: any;
+}
+
+export interface TeamWithEditing extends Team {
+  isEditing: boolean;
+  originalData: Team;
 }

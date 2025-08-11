@@ -42,8 +42,8 @@ model TeamMember {
 
 model Player {
   id        Int      @id
-  firstName String
-  lastName  String
+  lastname  String
+  realteam  String
   value     Int @default(0)
   role      RolePlayer
   teams     TeamPlayer[]

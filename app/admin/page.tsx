@@ -1,9 +1,9 @@
-import UploadPlayers from "../components/admin/UploadPlayers";
+"use client";
+import CommandList from "@/app/components/admin/CommandList";
 export default function AdminDashboard() {
   return (
     <>
-      <h1>Dashboard Admin</h1>
-      
+      <CommandList />
     </>
   );
 }

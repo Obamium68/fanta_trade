@@ -48,8 +48,8 @@ export async function GET(req: Request, { params }: RouteParams) {
             player: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
+                lastname: true,
+                realteam: true,
                 role: true
               }
             },

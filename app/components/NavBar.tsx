@@ -4,7 +4,8 @@ import {
     FaUsers,
     FaHistory,
     FaInbox,
-    FaFutbol
+    FaFutbol,
+    FaLock
 } from 'react-icons/fa';
 
 export default function NavBar() {
@@ -14,6 +15,7 @@ export default function NavBar() {
         { icon: FaHistory, label: "I tuoi scambi", link: "/trades-status"}, // Cronologia scambi
         { icon: FaInbox, label: "Scambi in arrivo",link: "incoming" }, // Inbox per le richieste
         { icon: FaFutbol, label: "Squadra", link: "team" }, // Pallone da calcio per la squadra
+        { icon: FaLock, label: "Admin", link: "/admin/" } // Gestione squadre
     ];
 
     return (

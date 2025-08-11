@@ -15,8 +15,8 @@ const roleMap: Record<string, RolePlayer> = {
 type CsvPlayer = {
   id: string;
   ruolo: string;
-  nome: string;
   cognome: string;
+  squadra: string;
 };
 
 export async function importPlayersFromCsv(filePath: string) {
@@ -42,14 +42,14 @@ export async function importPlayersFromCsv(filePath: string) {
     await prisma.player.upsert({
       where: { id },
       update: {
-        firstName: row.nome.trim(),
-        lastName: row.cognome.trim(),
+        lastname: row.cognome.trim(),
+        realteam: row.squadra.trim(),
         role: roleMap[row.ruolo],
       },
       create: {
         id,
-        firstName: row.nome.trim(),
-        lastName: row.cognome.trim(),
+        lastname: row.cognome.trim(),
+        realteam: row.squadra.trim(),
         role: roleMap[row.ruolo],
       },
     });
