@@ -38,8 +38,7 @@ export async function GET(req: Request, { params }: RouteParams) {
           select: {
             id: true,
             email: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           }
         },
         players: {

@@ -8,13 +8,19 @@ export enum Girone {
 export interface TeamMember {
   id: number;
   teamId: number;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   phone: string;
 }
 
+export const GironeMap= {
+  "A": Girone.A,
+  "B": Girone.B,
+  "C": Girone.C
+};
+
 export interface Team {
+  _count: any;
   id: number;
   name: string;
   passwordHash?: string;

@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           "C": Girone.C,
         };
 
-        // Prepara i membri da creare
+        // Prepara i membri da creare (array di TeamMember)
         const membersToCreate = [];
 
         // Primo membro (obbligatorio)
@@ -111,12 +111,13 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Create team
+        // Create team con i suoi members
         await prisma.team.create({
           data: {
             name: teamName,
             passwordHash,
             girone: gironeMap[row.girone],
+            credits: 600,
             members: {
               create: membersToCreate
             }

@@ -34,8 +34,7 @@ model TeamMember {
   id        Int      @id @default(autoincrement())
   team      Team     @relation(fields: [teamId], references: [id])
   teamId    Int
-  firstName String
-  lastName  String
+  name String
   email     String
   phone     String
 }
@@ -47,7 +46,7 @@ model Player {
   value     Int @default(0)
   role      RolePlayer
   teams     TeamPlayer[]
-
+  teamsCount Int @default(0)
   tradeSent Trade[] @relation("PlayerFrom")
   tradeReceived Trade[] @relation("PlayerTo")
 }

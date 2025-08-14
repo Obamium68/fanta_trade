@@ -1,11 +1,13 @@
 "use client";
-import AdminTeamList from "@/app/components/admin/TeamAdminTable";
 
+import AdminTeamList from "@/app/components/admin/TeamAdminTable";
+import { CSVImport } from "@/app/components/auth/login";
 export default function TeamList(){
     return (
         <div className="p-6 max-w-4xl mx-auto flex flex-col items-center justify-center">
             
             <AdminTeamList/>
+            {/*<CSVImport />*/}
         </div>
     );
 }
