@@ -1,8 +1,34 @@
-// components/admin/CommandList.tsx
+'use client';
+
 import Link from 'next/link';
-import { FaClipboardList, FaExchangeAlt, FaUserEdit, FaUsers } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
+import { FaClipboardList, FaExchangeAlt, FaUserEdit, FaUsers, FaSignOutAlt } from 'react-icons/fa';
+import { useState } from 'react';
 
 export default function CommandList() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch('/api/admin/logout', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        router.push('/admin/login');
+        router.refresh();
+      } else {
+        console.error('Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   const adminCommands = [
     {
       icon: FaUsers,
@@ -38,10 +64,26 @@ export default function CommandList() {
     <div className="container flex mx-auto w-full items-center justify-center">
       <div className="w-full max-w-2xl">
         <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Pannello Admin</h2>
-          <p className="text-gray-600">Gestisci il tuo fantacalcio</p>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1"></div>
+            <div className="flex-1 text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Pannello Admin</h2>
+              <p className="text-gray-600">Gestisci il tuo fantacalcio</p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Logout"
+              >
+                <FaSignOutAlt className="w-4 h-4" />
+                <span>{isLoggingOut ? 'Uscendo...' : 'Esci'}</span>
+              </button>
+            </div>
+          </div>
         </div>
-        
+       
         <ul className="flex flex-col space-y-3">
           {adminCommands.map((command, index) => (
             <li key={index} className="border-gray-200 border rounded-lg overflow-hidden">

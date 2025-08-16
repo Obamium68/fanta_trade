@@ -13,8 +13,8 @@ export default function NavBar() {
         { icon: FaGlobe, label: "Scambia globalmente", link: "/global" }, // Icona per scambi globali
         { icon: FaUsers, label: "Scambia localmente", link: "/local" }, // Meglio di FaLayerGroup per gruppi
         { icon: FaHistory, label: "I tuoi scambi", link: "/trades-status"}, // Cronologia scambi
-        { icon: FaInbox, label: "Scambi in arrivo",link: "incoming" }, // Inbox per le richieste
-        { icon: FaFutbol, label: "Squadra", link: "team" }, // Pallone da calcio per la squadra
+        { icon: FaInbox, label: "Scambi in arrivo",link: "/incoming" }, // Inbox per le richieste
+        { icon: FaFutbol, label: "Squadra", link: "/team" }, // Pallone da calcio per la squadra
         { icon: FaLock, label: "Admin", link: "/admin/" } // Gestione squadre
     ];
 
