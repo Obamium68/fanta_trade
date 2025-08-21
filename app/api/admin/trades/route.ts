@@ -1,0 +1,72 @@
+// app/api/admin/trades/route.ts - Lista trade per admin con filtri
+import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.cookies.get('admin-auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded.isAdmin) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const teamId = searchParams.get('teamId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
+
+    const where: any = {};
+    if (status) {
+      where.status = status;
+    }
+    if (teamId) {
+      where.OR = [
+        { fromTeamId: parseInt(teamId) },
+        { toTeamId: parseInt(teamId) }
+      ];
+    }
+
+    const [trades, total] = await Promise.all([
+      prisma.trade.findMany({
+        where,
+        include: {
+          fromTeam: true,
+          toTeam: true,
+          playerFrom: true,
+          playerTo: true,
+          logs: {
+            orderBy: { timestamp: 'desc' },
+            take: 5 // Solo gli ultimi 5 log per prestazioni
+          }
+        },
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit
+      }),
+      prisma.trade.count({ where })
+    ]);
+
+    return NextResponse.json({
+      trades,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Admin get trades error:', error);
+    return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
+  }
+}
+

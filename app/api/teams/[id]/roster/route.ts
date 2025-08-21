@@ -4,11 +4,28 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+
+interface RouteContext {
+    params: {
+        teamId: string;
+        then: <TResult1 = any, TResult2 = never>(
+            onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+            onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
+        ) => Promise<TResult1 | TResult2>;
+        catch: <TResult = never>(
+            onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
+        ) => Promise<any>;
+        finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
+        [Symbol.toStringTag]: string;
+    }
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  context: RouteContext
 ) {
   try {
+    const { params } = context;
     const teamId = parseInt(params.teamId);
     // Verifica che il teamId sia valido
     if (isNaN(teamId)) {

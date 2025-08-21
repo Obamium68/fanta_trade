@@ -7,15 +7,26 @@ import { Girone } from '@prisma/client';
 
 const prisma = new PrismaClient().$extends(withAccelerate());
 
-interface RouteParams {
+interface RouteContext {
   params: {
     id: string;
-  };
-}
+    then: <TResult1 = any, TResult2 = never>(
+      onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+      onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
+    ) => Promise<TResult1 | TResult2>;
+    catch: <TResult = never>(
+      onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
+    ) => Promise<any>;
+    finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
+    [Symbol.toStringTag]: string;
+  }
+};
+
 
 // GET - Recuperare un team specifico
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(req: Request, context: RouteContext) {
   try {
+    const { params } = context;
     const teamId = parseInt(params.id);
 
     if (isNaN(teamId)) {
@@ -82,8 +93,9 @@ export async function GET(req: Request, { params }: RouteParams) {
 }
 
 // PUT - Modificare completamente un team
-export async function PUT(req: Request, { params }: RouteParams) {
+export async function PUT(req: Request, context: RouteContext) {
   try {
+    const { params } = context;
     const teamId = parseInt(params.id);
     const body = await req.json();
     const { name, password, girone, credits } = body;
@@ -220,13 +232,13 @@ export async function PUT(req: Request, { params }: RouteParams) {
 }
 
 // PATCH - Modificare parzialmente un team
-export async function PATCH(req: Request, { params }: RouteParams) {
+export async function PATCH(req: Request, { params }: RouteContext) {
   // Stessa logica del PUT ma più esplicita per aggiornamenti parziali
   return PUT(req, { params });
 }
 
 // DELETE - Eliminare un team
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(req: Request, { params }: RouteContext) {
   try {
     const teamId = parseInt(params.id);
 
@@ -258,7 +270,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // Verifica se ci sono relazioni che impediscono l'eliminazione
-    const hasActiveRelations = 
+    const hasActiveRelations =
       existingTeam.members.length > 0 ||
       existingTeam.players.length > 0 ||
       existingTeam.tradesSent.length > 0 ||
@@ -266,7 +278,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     if (hasActiveRelations) {
       return NextResponse.json(
-        { 
+        {
           error: "Impossibile eliminare il team: ci sono membri, giocatori o scambi associati",
           details: {
             members: existingTeam.members.length,

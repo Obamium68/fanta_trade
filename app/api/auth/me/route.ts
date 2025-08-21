@@ -38,7 +38,10 @@ export async function GET(request: NextRequest) {
         name: team.name,
         girone: team.girone,
         credits: team.credits,
-        members: team.members
+        members: team.members,
+        passwordHash: team.passwordHash,
+        createdAt: team.createdAt,
+        updatedAt: team.updatedAt,
       }
     });
 
