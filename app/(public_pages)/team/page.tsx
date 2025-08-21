@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Team } from '@/app/lib/types/teams';
+import TeamRoster from '@/app/components/TeamRoster';
 
 export default function Dashboard() {
   const [team, setTeam] = useState<Team | null>(null);
@@ -62,7 +63,7 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold">Fantasy League Dashboard</h1>
+              <h1 className="text-xl font-semibold">La tua squadra</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Benvenuto, {team.name}</span>
@@ -175,6 +176,9 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Team Roster Component */}
+          <TeamRoster teamId={team.id} />
         </div>
       </main>
     </div>

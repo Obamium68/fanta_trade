@@ -4,6 +4,7 @@ import { TeamWithEditing, TeamsResponse, TeamUpdateRequest, TeamUpdateResponse, 
 import { Team, Girone, TeamMember } from '@prisma/client';
 import { useState, useEffect } from 'react';
 import { FaEdit, FaSave, FaTimes, FaEye, FaTrash, FaSpinner, FaUsers, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { redirect, RedirectType } from 'next/navigation'
 
 // Estendo il tipo per includere i membri
 interface TeamWithMembersAndEditing {
@@ -39,7 +40,7 @@ export default function TeamAdminTable() {
             if (!response.ok) throw new Error('Errore nel caricamento delle squadre');
 
             const data: TeamsResponse = await response.json();
-            setSquadre(data.teams.map(s => ({ 
+            setSquadre(data.teams.map(s => ({
                 id: s.id,
                 name: s.name,
                 passwordHash: s.passwordHash,
@@ -61,9 +62,9 @@ export default function TeamAdminTable() {
     };
 
     const handleEdit = (id: number) => {
-        setSquadre(squadre.map(s => 
-            s.id === id 
-                ? { ...s, isEditing: true, originalData: { ...s } } 
+        setSquadre(squadre.map(s =>
+            s.id === id
+                ? { ...s, isEditing: true, originalData: { ...s } }
                 : { ...s, isEditing: false }
         ));
     };
@@ -91,9 +92,9 @@ export default function TeamAdminTable() {
             }
 
             const result: TeamUpdateResponse = await response.json();
-            setSquadre(squadre.map(s => 
-                s.id === id 
-                    ? { ...s, ...result.team, isEditing: false, originalData: { ...s, ...result.team } } 
+            setSquadre(squadre.map(s =>
+                s.id === id
+                    ? { ...s, ...result.team, isEditing: false, originalData: { ...s, ...result.team } }
                     : s
             ));
         } catch (err) {
@@ -105,9 +106,9 @@ export default function TeamAdminTable() {
     };
 
     const handleCancel = (id: number) => {
-        setSquadre(squadre.map(s => 
+        setSquadre(squadre.map(s =>
             s.id === id && s.originalData
-                ? { ...s.originalData, isEditing: false } 
+                ? { ...s.originalData, isEditing: false }
                 : s
         ));
     };
@@ -127,17 +128,17 @@ export default function TeamAdminTable() {
     };
 
     const handleInputChange = (id: number, field: keyof TeamWithMembersAndEditing, value: string | number | Girone) => {
-        setSquadre(squadre.map(s => 
+        setSquadre(squadre.map(s =>
             s.id === id ? { ...s, [field]: value } : s
         ));
     };
 
     const handleViewRosa = (id: number) => {
-        console.log(`Visualizza rosa per squadra ${id}`);
+        redirect(`/admin/manage/roster?teamId=${id}`, RedirectType.push);
     };
 
     const toggleMembers = (id: number) => {
-        setSquadre(squadre.map(s => 
+        setSquadre(squadre.map(s =>
             s.id === id ? { ...s, showMembers: !s.showMembers } : s
         ));
     };
@@ -149,7 +150,7 @@ export default function TeamAdminTable() {
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                 <div className="flex justify-between items-center">
                     <span>{error}</span>
-                    <button 
+                    <button
                         onClick={() => setError(null)}
                         className="text-red-700 hover:text-red-900"
                     >
@@ -237,7 +238,7 @@ export default function TeamAdminTable() {
                                     <tr className="border-b border-gray-200">
                                         <th className="p-3 px-5 text-left font-semibold">ID</th>
                                         <th className="p-3 px-5 text-left font-semibold">Nome Squadra</th>
-                                        <th className="p-3 px-5 text-left font-semibold">Girone</th>
+                                        <th className="p-3 px-5 text-left font-semibold">Campionato</th>
                                         <th className="p-3 px-5 text-left font-semibold">Crediti</th>
                                         <th className="p-3 px-5 text-left font-semibold">Membri</th>
                                         <th className="p-3 px-5 text-center font-semibold">Rosa</th>
@@ -247,7 +248,7 @@ export default function TeamAdminTable() {
                                 <tbody>
                                     {squadre.map((s, idx) => (
                                         <React.Fragment key={s.id}>
-                                            <tr 
+                                            <tr
                                                 className={`
                                                     ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}
                                                     ${s.isEditing ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
@@ -257,9 +258,9 @@ export default function TeamAdminTable() {
                                                 <td className="p-3 px-5 font-medium">{s.id}</td>
                                                 <td className="p-3 px-5">
                                                     {s.isEditing ? (
-                                                        <input 
-                                                            type="text" 
-                                                            value={s.name} 
+                                                        <input
+                                                            type="text"
+                                                            value={s.name}
                                                             onChange={e => handleInputChange(s.id, 'name', e.target.value)}
                                                             className="p-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         />
@@ -271,8 +272,8 @@ export default function TeamAdminTable() {
                                                 </td>
                                                 <td className="p-3 px-5">
                                                     {s.isEditing ? (
-                                                        <select 
-                                                            value={s.girone} 
+                                                        <select
+                                                            value={s.girone}
                                                             onChange={e => handleInputChange(s.id, 'girone', e.target.value as Girone)}
                                                             className="p-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         >
@@ -286,9 +287,9 @@ export default function TeamAdminTable() {
                                                 </td>
                                                 <td className="p-3 px-5">
                                                     {s.isEditing ? (
-                                                        <input 
-                                                            type="number" 
-                                                            value={s.credits} 
+                                                        <input
+                                                            type="number"
+                                                            value={s.credits}
                                                             onChange={e => handleInputChange(s.id, 'credits', Number(e.target.value))}
                                                             className="w-24 p-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         />
@@ -308,7 +309,7 @@ export default function TeamAdminTable() {
                                                     </div>
                                                 </td>
                                                 <td className="p-3 px-5 text-center">
-                                                    <button 
+                                                    <button
                                                         className="text-purple-500 hover:text-purple-700 transition-colors"
                                                         onClick={() => handleViewRosa(s.id)}
                                                         title="Visualizza rosa"
@@ -320,15 +321,15 @@ export default function TeamAdminTable() {
                                                     <div className="flex justify-center space-x-2">
                                                         {s.isEditing ? (
                                                             <>
-                                                                <button 
-                                                                    className='text-sm bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition-colors flex items-center space-x-1' 
+                                                                <button
+                                                                    className='text-sm bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition-colors flex items-center space-x-1'
                                                                     onClick={() => handleSave(s.id)}
                                                                     disabled={savingId === s.id}
                                                                 >
                                                                     {savingId === s.id ? <FaSpinner className="animate-spin" /> : <FaSave />}
                                                                 </button>
-                                                                <button 
-                                                                    className='text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors' 
+                                                                <button
+                                                                    className='text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors'
                                                                     onClick={() => handleCancel(s.id)}
                                                                     disabled={savingId === s.id}
                                                                 >
@@ -337,15 +338,15 @@ export default function TeamAdminTable() {
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <button 
-                                                                    className='text-sm bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors flex items-center space-x-1' 
+                                                                <button
+                                                                    className='text-sm bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors flex items-center space-x-1'
                                                                     onClick={() => handleEdit(s.id)}
                                                                     title="Modifica squadra"
                                                                 >
                                                                     <FaEdit />
                                                                 </button>
-                                                                <button 
-                                                                    className='text-sm bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors' 
+                                                                <button
+                                                                    className='text-sm bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors'
                                                                     onClick={() => handleDelete(s.id)}
                                                                     title="Elimina squadra"
                                                                 >
@@ -366,7 +367,7 @@ export default function TeamAdminTable() {
                                 <div className="text-center py-12 text-gray-500">
                                     <FaSpinner className="mx-auto text-4xl mb-4 text-gray-300" />
                                     <p className="text-xl">Nessuna squadra trovata</p>
-                                    <button 
+                                    <button
                                         onClick={fetchSquadre}
                                         className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
                                     >
