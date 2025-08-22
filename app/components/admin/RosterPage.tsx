@@ -216,7 +216,7 @@ export default function AdminRosterPage({ teamId }: AdminRosterPageProps) {
                 Gestione Rosa - {team.name}
               </h1>
               <p className="text-gray-600 mt-1">
-                Girone {team.girone} • {stats.totalPlayers}/20 giocatori • €{stats.totalValue} valore totale
+                Campionato {team.girone} • {stats.totalPlayers}/25 giocatori • €{stats.totalValue} valore totale
               </p>
             </div>
             <div className="flex space-x-3">

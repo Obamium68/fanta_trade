@@ -10,13 +10,13 @@ export default function TradeNavigation() {
     {
       name: 'Scambi Locali',
       href: '/trades/local',
-      description: 'Scambia con squadre del tuo girone',
+      description: 'Scambia con squadre del tuo campionato',
       icon: '🏠'
     },
     {
       name: 'Scambi Globali', 
       href: '/trades/global',
-      description: 'Scambia con squadre di tutti i gironi',
+      description: 'Scambia con squadre di tutti i campionati',
       icon: '🌍'
     },
     {

@@ -92,8 +92,8 @@ export default function TradesManager({ isGlobal, currentTeam }: TradesManagerPr
         </h1>
         <p className="text-gray-600">
           {isGlobal 
-            ? 'Scambia giocatori con squadre di tutti i gironi'
-            : `Scambia giocatori solo con squadre del girone ${currentTeam.girone}`
+            ? 'Scambia giocatori con squadre di tutti i campionati'
+            : `Scambia giocatori solo con squadre del campionato ${currentTeam.girone}`
           }
         </p>
       </div>

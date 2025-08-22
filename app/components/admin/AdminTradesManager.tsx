@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { Trade, Team, Player, TradeStatus, TradeLog, TradePhase } from '@prisma/client';
+import AdminTradeList from './AdminTradeList';
+import AdminTradePhaseManager from './AdminTradePhaseManager';
+import AdminTradeStats from './AdminTradeStats';
 // import AdminTradeList from './AdminTradeList';
 // import AdminTradePhaseManager from './AdminTradePhaseManager';
 // import AdminTradeStats from './AdminTradeStats';
@@ -133,7 +136,7 @@ export default function AdminTradeManager({
       </div>
 
       {/* Content */}
-      {/* {activeTab === 'overview' && (
+      {activeTab === 'overview' && (
         <AdminTradeStats stats={stats} />
       )}
 
@@ -148,7 +151,7 @@ export default function AdminTradeManager({
           loading={loading}
           showActions={activeTab === 'accepted'}
         />
-      )} */}
+      )}
     </div>
   );
 }

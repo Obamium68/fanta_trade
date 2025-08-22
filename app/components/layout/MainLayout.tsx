@@ -33,7 +33,7 @@ export default function MainLayout({
               </h1>
               {currentTeam && (
                 <p className="text-sm text-gray-600">
-                  {currentTeam.name} - Girone {currentTeam.girone} - Crediti: {currentTeam.credits}
+                  {currentTeam.name} - Campionato {currentTeam.girone} - Crediti: {currentTeam.credits}
                 </p>
               )}
             </div>

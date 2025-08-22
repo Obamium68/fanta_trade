@@ -8,13 +8,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('admin-auth-token')?.value;
+    const token = request.cookies.get('admin-auth')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (!decoded.isAdmin) {
+    if (decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
 
