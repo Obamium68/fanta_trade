@@ -66,10 +66,38 @@ export default function AdminRosterPage({ teamId }: AdminRosterPageProps) {
   }, [teamId]);
 
   useEffect(() => {
-    if (showAddPlayer) {
+  if (!showAddPlayer) return;
+  
+  // Cerca solo se:
+  // - Non c'è searchTerm (mostra tutti)
+  // - searchTerm ha almeno 2 caratteri
+  // - È cambiato selectedRole
+  if (!searchTerm || searchTerm.length >= 2) {
+    const timeoutId = setTimeout(() => {
       searchPlayers();
-    }
-  }, [showAddPlayer, searchTerm, selectedRole]);
+    }, searchTerm ? 500 : 0);
+
+    return () => clearTimeout(timeoutId);
+  }
+}, [showAddPlayer, searchTerm, selectedRole]);
+
+// Aggiungi feedback visivo nell'input
+<input
+  type="text"
+  placeholder="Cerca per cognome (min 2 caratteri)..."
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+    searchTerm && searchTerm.length < 2 
+      ? 'border-yellow-300 bg-yellow-50' 
+      : 'border-gray-300'
+  }`}
+/>
+{searchTerm && searchTerm.length < 2 && (
+  <p className="text-sm text-yellow-600 mt-1">
+    Inserisci almeno 2 caratteri per cercare
+  </p>
+)}
 
   const fetchRosterData = async () => {
     try {

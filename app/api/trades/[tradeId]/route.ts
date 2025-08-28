@@ -11,7 +11,6 @@ const updateTradeSchema = z.object({
   action: z.enum(['accept', 'reject'])
 });
 
-
 interface RouteContext {
     params: {
         tradeId: string;
@@ -26,7 +25,6 @@ interface RouteContext {
         [Symbol.toStringTag]: string;
     }
 }
-
 
 export async function GET(
   request: NextRequest,
@@ -74,8 +72,6 @@ export async function GET(
   }
 }
 
-
-
 export async function PUT(
   request: NextRequest,
   { params }: RouteContext
@@ -116,13 +112,13 @@ export async function PUT(
     }
 
     if (action === 'accept') {
-      // Esegui lo scambio con una transazione
+      // MODIFICATO: Non eseguire immediatamente lo scambio, solo cambiare stato
       const result = await prisma.$transaction(async (tx) => {
-        // Ottieni tutti i giocatori coinvolti
+        // Ottieni tutti i giocatori coinvolti per validazione
         const playersFrom = trade.tradePlayers.filter(tp => tp.direction === 'FROM');
         const playersTo = trade.tradePlayers.filter(tp => tp.direction === 'TO');
 
-        // Verifica che tutti i giocatori siano ancora disponibili
+        // Verifica che tutti i giocatori siano ancora disponibili nelle rose attuali
         const fromTeamPlayers = await tx.teamPlayer.findMany({
           where: {
             teamId: trade.fromTeamId,
@@ -142,53 +138,17 @@ export async function PUT(
           throw new Error('Alcuni giocatori non sono più disponibili');
         }
 
-        // Rimuovi tutti i giocatori dalle squadre attuali
-        await tx.teamPlayer.deleteMany({
-          where: {
-            OR: [
-              {
-                teamId: trade.fromTeamId,
-                playerId: { in: playersFrom.map(p => p.playerId) }
-              },
-              {
-                teamId: trade.toTeamId,
-                playerId: { in: playersTo.map(p => p.playerId) }
-              }
-            ]
-          }
-        });
-
-        // Aggiungi i giocatori alle nuove squadre
-        // I giocatori FROM vanno al team TO
-        await tx.teamPlayer.createMany({
-          data: playersFrom.map(p => ({
-            teamId: trade.toTeamId,
-            playerId: p.playerId
-          }))
-        });
-
-        // I giocatori TO vanno al team FROM
-        await tx.teamPlayer.createMany({
-          data: playersTo.map(p => ({
-            teamId: trade.fromTeamId,
-            playerId: p.playerId
-          }))
-        });
-
-        // Gestisci i crediti se presenti
+        // Verifica crediti del team mittente (se ci sono crediti nel trade)
         if (trade.credits > 0) {
-          await tx.team.update({
-            where: { id: trade.fromTeamId },
-            data: { credits: { decrement: trade.credits } }
+          const fromTeam = await tx.team.findUnique({ 
+            where: { id: trade.fromTeamId } 
           });
-
-          await tx.team.update({
-            where: { id: trade.toTeamId },
-            data: { credits: { increment: trade.credits } }
-          });
+          if (!fromTeam || fromTeam.credits < trade.credits) {
+            throw new Error('Il team mittente non ha crediti sufficienti');
+          }
         }
 
-        // Aggiorna lo stato del trade
+        // Aggiorna solo lo stato del trade - NON eseguire lo scambio
         const updatedTrade = await tx.trade.update({
           where: { id: tradeId },
           data: { status: 'ACCEPTED' }
@@ -201,7 +161,7 @@ export async function PUT(
         await tx.tradeLog.create({
           data: {
             tradeId: tradeId,
-            action: `Trade accettato da ${trade.toTeam.name}. Scambio completato: [${fromPlayerNames}] → ${trade.toTeam.name}, [${toPlayerNames}] → ${trade.fromTeam.name}${trade.credits > 0 ? `, ${trade.credits} crediti trasferiti` : ''}`
+            action: `Trade accettato da ${trade.toTeam.name}. In attesa di approvazione admin per: [${fromPlayerNames}] → ${trade.toTeam.name}, [${toPlayerNames}] → ${trade.fromTeam.name}${trade.credits > 0 ? `, ${trade.credits} crediti da trasferire` : ''}`
           }
         });
 
@@ -209,7 +169,7 @@ export async function PUT(
       });
 
       return NextResponse.json({ 
-        message: 'Trade accettato con successo',
+        message: 'Trade accettato con successo. In attesa di approvazione admin.',
         trade: result
       });
 
@@ -245,7 +205,9 @@ export async function PUT(
     
     console.error('Update trade error:', error);
     
-    if (error instanceof Error && error.message === 'Alcuni giocatori non sono più disponibili') {
+    if (error instanceof Error && 
+        (error.message === 'Alcuni giocatori non sono più disponibili' ||
+         error.message === 'Il team mittente non ha crediti sufficienti')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     
@@ -266,12 +228,12 @@ export async function DELETE(
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const tradeId = parseInt(params.tradeId);
 
-    // Solo il creatore può cancellare un trade in sospeso
+    // Solo il creatore può cancellare un trade in sospeso o accettato ma non ancora approvato
     const trade = await prisma.trade.findFirst({
       where: {
         id: tradeId,
         fromTeamId: decoded.teamId,
-        status: 'PENDING'
+        status: { in: ['PENDING', 'ACCEPTED'] } // Permetti cancellazione anche se accettato ma non approvato
       }
     });
 

@@ -1,12 +1,12 @@
 // app/api/players/[id]/route.ts
-import { PlayerUpdateRequest, PlayerUpdateResponse, PlayerRole} from '@/app/lib/types/players';
+import { PlayerUpdateRequest, PlayerUpdateResponse, PlayerRole } from '@/app/lib/types/players';
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 
 const prisma = new PrismaClient();
 
 // Utility function per mappare il ruolo dal database al tipo interfaccia
-const mapRoleToPlayerRole = (role: string) :PlayerRole => {
+const mapRoleToPlayerRole = (role: string): PlayerRole => {
   switch (role) {
     case 'PORTIERE': return PlayerRole.P;
     case 'DIFENSORE': return PlayerRole.D;
@@ -77,7 +77,7 @@ export async function GET(
   try {
     const { id } = await params;
     const playerId = parseInt(id);
-    
+
     if (isNaN(playerId)) {
       return NextResponse.json(
         { error: 'ID player non valido' },
@@ -105,10 +105,7 @@ export async function GET(
   }
 }
 
-/**
- * DELETE /api/players/[id]
- * Elimina un player e tutte le sue relazioni
- */
+
 // export async function DELETE(
 //   request: NextRequest,
 //   { params }: { params: Promise<{ id: string }> }
@@ -124,13 +121,16 @@ export async function GET(
 //       );
 //     }
 
-//     // Verifica se il player esiste
+//     // Trova il player con tutte le relazioni necessarie
 //     const existingPlayer = await prisma.player.findUnique({
 //       where: { id: playerId },
 //       include: {
 //         teams: true,
-//         tradeSent: true,
-//         tradeReceived: true
+//         tradePlayers: {
+//           include: {
+//             trade: true
+//           }
+//         }
 //       }
 //     });
 
@@ -141,37 +141,75 @@ export async function GET(
 //       );
 //     }
 
-//     // Verifica se ci sono trade pendenti
-//     const pendingTrades = [...existingPlayer.tradeSent, ...existingPlayer.tradeReceived]
-//       .filter(trade => trade.status === 'PENDING');
-    
+//     // Verifica se ci sono trade pendenti che coinvolgono questo giocatore
+//     const pendingTrades = existingPlayer.tradePlayers
+//       .filter(tp => tp.trade.status === 'PENDING' || tp.trade.status === 'ACCEPTED')
+//       .map(tp => tp.trade);
+
 //     if (pendingTrades.length > 0) {
+//       const tradeIds = [...new Set(pendingTrades.map(t => t.id))];
 //       return NextResponse.json(
-//         { error: 'Impossibile eliminare il player: ci sono trade pendenti' },
+//         { 
+//           error: `Impossibile eliminare il player: è coinvolto in ${tradeIds.length} trade pendenti/accettati (IDs: ${tradeIds.join(', ')})` 
+//         },
 //         { status: 400 }
 //       );
 //     }
 
-//     // Elimina le relazioni e il player in una transazione
+//     // Verifica se il player è in qualche rosa attiva
+//     if (existingPlayer.teams.length > 0) {
+//       const teamNames = existingPlayer.teams.map(t => t.name).join(', ');
+//       return NextResponse.json(
+//         { 
+//           error: `Impossibile eliminare il player: è ancora presente nelle rose di: ${teamNames}` 
+//         },
+//         { status: 400 }
+//       );
+//     }
+
 //     await prisma.$transaction(async (tx) => {
-//       // Elimina prima le relazioni TeamPlayer
+//       // Elimina prima i record TradePlayer (se esistono trade completati)
+//       await tx.tradePlayer.deleteMany({
+//         where: { playerId }
+//       });
+
+//       // Elimina le relazioni TeamPlayer (dovrebbero essere già 0 dal controllo sopra)
 //       await tx.teamPlayer.deleteMany({
 //         where: { playerId }
 //       });
 
-//       // Poi elimina il player
+//       // Elimina il player
 //       await tx.player.delete({
 //         where: { id: playerId }
 //       });
 //     });
 
-//     return NextResponse.json({ 
+//     console.log(`Player ${existingPlayer.lastname} (ID: ${playerId}) eliminato con successo`);
+
+//     return NextResponse.json({
 //       message: 'Player eliminato con successo',
-//       playerId 
+//       playerId,
+//       playerName: existingPlayer.lastname
 //     });
 
 //   } catch (error) {
 //     console.error('Errore durante l\'eliminazione del player:', error);
+    
+//     // Gestisci errori specifici di Prisma
+//     if (error.code === 'P2003') {
+//       return NextResponse.json(
+//         { error: 'Impossibile eliminare: il player ha ancora dipendenze nel database' },
+//         { status: 400 }
+//       );
+//     }
+    
+//     if (error.code === 'P2025') {
+//       return NextResponse.json(
+//         { error: 'Player non trovato o già eliminato' },
+//         { status: 404 }
+//       );
+//     }
+
 //     return NextResponse.json(
 //       { error: 'Errore interno del server' },
 //       { status: 500 }
@@ -190,7 +228,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const playerId = parseInt(id);
-    
+
     if (isNaN(playerId)) {
       return NextResponse.json(
         { error: 'ID player non valido' },
@@ -200,7 +238,7 @@ export async function PATCH(
 
     const body = await request.json();
     const { value } = body as PlayerUpdateRequest;
-    
+
     if (typeof value !== 'number' || value < 0) {
       return NextResponse.json(
         { error: 'Il valore deve essere un numero positivo' },
@@ -256,7 +294,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const playerId = parseInt(id);
-    
+
     if (isNaN(playerId)) {
       return NextResponse.json(
         { error: 'ID player non valido' },
@@ -266,7 +304,7 @@ export async function PUT(
 
     const body = await request.json();
     const { lastname, realteam, value, role } = body;
-    
+
     // Validazione dei dati richiesti
     if (!lastname || !realteam || typeof value !== 'number' || !role) {
       return NextResponse.json(
