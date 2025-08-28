@@ -1,32 +1,36 @@
+//components/trades/TradeForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Player, Team } from '@prisma/client';
+import { Player, RolePlayer, Team } from '@prisma/client';
 
 interface TradeFormProps {
   isGlobal: boolean;
   currentTeam: Team;
-  onSubmit: (trade: TradeData) => void;
+  onSubmit: (trade: MultiTradeData) => void;
   loading: boolean;
 }
 
-interface TradeData {
+interface MultiTradeData {
   toTeamId: number;
-  playerFromId: number;
-  playerToId: number;
+  playersFrom: number[];
+  playersTo: number[];
   credits: number;
+}
+
+interface PlayerWithRole extends Player {
+  role: RolePlayer;
 }
 
 export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: TradeFormProps) {
   const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
-  const [myPlayers, setMyPlayers] = useState<Player[]>([]);
-  const [targetPlayers, setTargetPlayers] = useState<Player[]>([]);
+  const [myPlayers, setMyPlayers] = useState<PlayerWithRole[]>([]);
+  const [targetPlayers, setTargetPlayers] = useState<PlayerWithRole[]>([]);
   
   const [selectedToTeam, setSelectedToTeam] = useState<number>(0);
-  const [selectedPlayerFrom, setSelectedPlayerFrom] = useState<number>(0);
-  const [selectedPlayerTo, setSelectedPlayerTo] = useState<number>(0);
+  const [selectedPlayersFrom, setSelectedPlayersFrom] = useState<number[]>([]);
+  const [selectedPlayersTo, setSelectedPlayersTo] = useState<number[]>([]);
   const [credits, setCredits] = useState<number>(0);
-  const [selectedRole, setSelectedRole] = useState<string>('');
 
   // Carica team disponibili
   useEffect(() => {
@@ -45,12 +49,11 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
     fetchTeams();
   }, [isGlobal]);
 
-  // Carica i miei giocatori quando cambia il ruolo
+  // Carica i miei giocatori
   useEffect(() => {
     const fetchMyPlayers = async () => {
       try {
-        const roleParam = selectedRole ? `&role=${selectedRole}` : '';
-        const res = await fetch(`/api/trades/available-players?teamId=${currentTeam.id}${roleParam}`);
+        const res = await fetch(`/api/trades/available-players?teamId=${currentTeam.id}`);
         const data = await res.json();
         if (res.ok) {
           setMyPlayers(data.players);
@@ -60,24 +63,23 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
       }
     };
     fetchMyPlayers();
-  }, [currentTeam.id, selectedRole]);
+  }, [currentTeam.id]);
 
   // Carica giocatori del team target
   useEffect(() => {
-    if (selectedToTeam && selectedRole) {
+    if (selectedToTeam) {
       const fetchTargetPlayers = async () => {
         try {
-          const res = await fetch(`/api/trades/available-players?teamId=${selectedToTeam}&role=${selectedRole}`);
+          const res = await fetch(`/api/trades/available-players?teamId=${selectedToTeam}`);
           const data = await res.json();
           if (res.ok) {
             let filteredPlayers = data.players;
             
-            // Per scambi globali, rimuovi lo stesso giocatore se presente
-            if (isGlobal && selectedPlayerFrom) {
-              const myPlayer = myPlayers.find(p => p.id === selectedPlayerFrom);
-              if (myPlayer) {
-                filteredPlayers = data.players.filter((p: Player) => p.id !== myPlayer.id);
-              }
+            // Per scambi globali, rimuovi gli stessi giocatori se presenti
+            if (isGlobal && selectedPlayersFrom.length > 0) {
+              const mySelectedPlayers = myPlayers.filter(p => selectedPlayersFrom.includes(p.id));
+              const myPlayerIds = mySelectedPlayers.map(p => p.id);
+              filteredPlayers = data.players.filter((p: Player) => !myPlayerIds.includes(p.id));
             }
             
             setTargetPlayers(filteredPlayers);
@@ -90,13 +92,71 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
     } else {
       setTargetPlayers([]);
     }
-  }, [selectedToTeam, selectedRole, isGlobal, selectedPlayerFrom, myPlayers]);
+  }, [selectedToTeam, isGlobal, selectedPlayersFrom, myPlayers]);
+
+  const handlePlayerFromToggle = (playerId: number) => {
+    setSelectedPlayersFrom(prev => 
+      prev.includes(playerId)
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    );
+  };
+
+  const handlePlayerToToggle = (playerId: number) => {
+    setSelectedPlayersTo(prev => 
+      prev.includes(playerId)
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    );
+  };
+
+  const validateRoleBalance = () => {
+    const fromPlayers = myPlayers.filter(p => selectedPlayersFrom.includes(p.id));
+    const toPlayers = targetPlayers.filter(p => selectedPlayersTo.includes(p.id));
+
+    if (fromPlayers.length !== toPlayers.length) {
+      return 'Il numero di giocatori ceduti deve essere uguale a quello ricevuto';
+    }
+
+    // Conta per ruolo
+    const fromRoles = fromPlayers.reduce((acc, player) => {
+      acc[player.role] = (acc[player.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const toRoles = toPlayers.reduce((acc, player) => {
+      acc[player.role] = (acc[player.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Verifica bilanciamento per ruolo
+    const allRoles = new Set([...Object.keys(fromRoles), ...Object.keys(toRoles)]);
+    
+    for (const role of allRoles) {
+      if ((fromRoles[role] || 0) !== (toRoles[role] || 0)) {
+        return `Devi scambiare lo stesso numero di giocatori per ruolo. Ruolo sbilanciato: ${role}`;
+      }
+    }
+
+    return null;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedToTeam || !selectedPlayerFrom || !selectedPlayerTo) {
-      alert('Seleziona tutti i campi obbligatori');
+    if (!selectedToTeam) {
+      alert('Seleziona il team destinazione');
+      return;
+    }
+
+    if (selectedPlayersFrom.length === 0 || selectedPlayersTo.length === 0) {
+      alert('Seleziona almeno un giocatore per ogni squadra');
+      return;
+    }
+
+    const validationError = validateRoleBalance();
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
@@ -107,11 +167,22 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
 
     onSubmit({
       toTeamId: selectedToTeam,
-      playerFromId: selectedPlayerFrom,
-      playerToId: selectedPlayerTo,
+      playersFrom: selectedPlayersFrom,
+      playersTo: selectedPlayersTo,
       credits
     });
   };
+
+  const groupPlayersByRole = (players: PlayerWithRole[]) => {
+    return players.reduce((acc, player) => {
+      if (!acc[player.role]) acc[player.role] = [];
+      acc[player.role].push(player);
+      return acc;
+    }, {} as Record<string, PlayerWithRole[]>);
+  };
+
+  const selectedFromPlayers = myPlayers.filter(p => selectedPlayersFrom.includes(p.id));
+  const selectedToPlayers = targetPlayers.filter(p => selectedPlayersTo.includes(p.id));
 
   const roles = [
     { value: 'PORTIERE', label: 'Portiere' },
@@ -126,31 +197,7 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
         Proponi Scambio {isGlobal ? 'Globale' : 'Locale'}
       </h3>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Selezione Ruolo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Ruolo
-          </label>
-          <select
-            value={selectedRole}
-            onChange={(e) => {
-              setSelectedRole(e.target.value);
-              setSelectedPlayerFrom(0);
-              setSelectedPlayerTo(0);
-            }}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Seleziona ruolo</option>
-            {roles.map(role => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Team Destinazione */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -160,7 +207,7 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
             value={selectedToTeam}
             onChange={(e) => {
               setSelectedToTeam(Number(e.target.value));
-              setSelectedPlayerTo(0);
+              setSelectedPlayersTo([]);
             }}
             className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             required
@@ -174,47 +221,114 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
           </select>
         </div>
 
-        {/* Mio Giocatore */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Il tuo giocatore
-          </label>
-          <select
-            value={selectedPlayerFrom}
-            onChange={(e) => setSelectedPlayerFrom(Number(e.target.value))}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={!selectedRole}
-          >
-            <option value="">Seleziona giocatore</option>
-            {myPlayers.map(player => (
-              <option key={player.id} value={player.id}>
-                {player.lastname} ({player.realteam}) - Valore: {player.value}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* I tuoi giocatori */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">
+              I tuoi giocatori ({selectedPlayersFrom.length} selezionati)
+            </h4>
+            <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-3">
+              {Object.entries(groupPlayersByRole(myPlayers)).map(([role, players]) => (
+                <div key={role}>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">
+                    {roles.find(r => r.value === role)?.label} ({players.filter(p => selectedPlayersFrom.includes(p.id)).length})
+                  </h5>
+                  {players.map(player => (
+                    <label key={player.id} className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedPlayersFrom.includes(player.id)}
+                        onChange={() => handlePlayerFromToggle(player.id)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className={selectedPlayersFrom.includes(player.id) ? 'font-medium' : ''}>
+                        {player.lastname} ({player.realteam}) - {player.value}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Giocatori del team target */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">
+              Giocatori richiesti ({selectedPlayersTo.length} selezionati)
+            </h4>
+            {!selectedToTeam ? (
+              <p className="text-gray-500 text-sm">Seleziona prima un team</p>
+            ) : (
+              <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-3">
+                {Object.entries(groupPlayersByRole(targetPlayers)).map(([role, players]) => (
+                  <div key={role}>
+                    <h5 className="text-sm font-medium text-gray-700 mb-1">
+                      {roles.find(r => r.value === role)?.label} ({players.filter(p => selectedPlayersTo.includes(p.id)).length})
+                    </h5>
+                    {players.map(player => (
+                      <label key={player.id} className="flex items-center space-x-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayersTo.includes(player.id)}
+                          onChange={() => handlePlayerToToggle(player.id)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className={selectedPlayersTo.includes(player.id) ? 'font-medium' : ''}>
+                          {player.lastname} ({player.realteam}) - {player.value}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Giocatore Target */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Giocatore richiesto
-          </label>
-          <select
-            value={selectedPlayerTo}
-            onChange={(e) => setSelectedPlayerTo(Number(e.target.value))}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            required
-            disabled={!selectedToTeam || !selectedRole}
-          >
-            <option value="">Seleziona giocatore</option>
-            {targetPlayers.map(player => (
-              <option key={player.id} value={player.id}>
-                {player.lastname} ({player.realteam}) - Valore: {player.value}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Riepilogo selezioni */}
+        {(selectedFromPlayers.length > 0 || selectedToPlayers.length > 0) && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h5 className="font-medium text-gray-900 mb-2">Riepilogo Scambio</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Cedi ({selectedFromPlayers.length}):</span>
+                <ul className="mt-1 space-y-1">
+                  {selectedFromPlayers.map(player => (
+                    <li key={player.id} className="text-red-700">
+                      • {player.lastname} - {player.value}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 font-medium">
+                  Valore totale ceduto: {selectedFromPlayers.reduce((sum, p) => sum + p.value, 0)}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-600">Ricevi ({selectedToPlayers.length}):</span>
+                <ul className="mt-1 space-y-1">
+                  {selectedToPlayers.map(player => (
+                    <li key={player.id} className="text-green-700">
+                      • {player.lastname} - {player.value}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 font-medium">
+                  Valore totale ricevuto: {selectedToPlayers.reduce((sum, p) => sum + p.value, 0)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t">
+              <span className="text-gray-600">Differenza di valore:</span>
+              <span className={`ml-2 font-medium ${
+                selectedToPlayers.reduce((sum, p) => sum + p.value, 0) > selectedFromPlayers.reduce((sum, p) => sum + p.value, 0)
+                  ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {selectedToPlayers.reduce((sum, p) => sum + p.value, 0) - selectedFromPlayers.reduce((sum, p) => sum + p.value, 0) > 0 ? '+' : ''}
+                {selectedToPlayers.reduce((sum, p) => sum + p.value, 0) - selectedFromPlayers.reduce((sum, p) => sum + p.value, 0)}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Crediti */}
         <div>
@@ -236,10 +350,10 @@ export default function TradeForm({ isGlobal, currentTeam, onSubmit, loading }: 
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          disabled={loading || selectedPlayersFrom.length === 0 || selectedPlayersTo.length === 0}
+          className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
         >
-          {loading ? 'Invio in corso...' : 'Proponi Scambio'}
+          {loading ? 'Invio in corso...' : 'Proponi Scambio '}
         </button>
       </form>
     </div>

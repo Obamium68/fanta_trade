@@ -35,8 +35,11 @@ export default async function IncomingTradesPage() {
       include: {
         fromTeam: true,
         toTeam: true,
-        playerFrom: true,
-        playerTo: true,
+        tradePlayers: {
+            include: {
+              player: true
+            }
+          },
         logs: {
           orderBy: { timestamp: 'desc' }
         }

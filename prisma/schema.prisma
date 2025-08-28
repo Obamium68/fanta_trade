@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,19 +10,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Team {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   passwordHash String
   girone    Girone
   credits   Int      @default(600)
-
   members   TeamMember[]
   players   TeamPlayer[]
   tradesSent     Trade[] @relation("FromTeam")
   tradesReceived Trade[] @relation("ToTeam")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -47,8 +41,9 @@ model Player {
   role      RolePlayer
   teams     TeamPlayer[]
   teamsCount Int @default(0)
-  tradeSent Trade[] @relation("PlayerFrom")
-  tradeReceived Trade[] @relation("PlayerTo")
+  // Removed direct trade relations since we now have TradePlayer
+  tradePlayersFrom TradePlayer[] @relation("PlayerFrom")
+  tradePlayersTo   TradePlayer[] @relation("PlayerTo")
 }
 
 model TeamPlayer {
@@ -57,7 +52,6 @@ model TeamPlayer {
   teamId    Int
   player    Player   @relation(fields: [playerId], references: [id])
   playerId  Int
-
   @@unique([teamId, playerId])
 }
 
@@ -67,19 +61,26 @@ model Trade {
   fromTeamId   Int
   toTeam       Team       @relation("ToTeam", fields: [toTeamId], references: [id])
   toTeamId     Int
-
-  playerFrom   Player     @relation("PlayerFrom", fields: [playerFromId], references: [id])
-  playerFromId Int
-  playerTo     Player     @relation("PlayerTo", fields: [playerToId], references: [id])
-  playerToId   Int
-
   credits      Int        @default(0)
   status       TradeStatus @default(PENDING)
-
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-
   logs         TradeLog[]
+  // New relation for multiple players
+  tradePlayers TradePlayer[]
+}
+
+// New model to handle multiple players in trades
+model TradePlayer {
+  id        Int      @id @default(autoincrement())
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  tradeId   Int
+  player    Player   @relation("PlayerFrom", fields: [playerId], references: [id])
+  playerId  Int
+  direction TradeDirection // FROM or TO
+  
+  @@unique([tradeId, playerId])
+  Player Player[] @relation("PlayerTo")
 }
 
 model TradeLog {
@@ -120,4 +121,9 @@ enum TradeStatus {
 enum PhaseStatus {
   OPEN
   CLOSED
+}
+
+enum TradeDirection {
+  FROM
+  TO
 }

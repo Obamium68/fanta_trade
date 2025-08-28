@@ -1,14 +1,13 @@
-// app/components/admin/AdminTradeList.tsx
+// app/components/admin/AdminTradeList.tsx - Multi-player support
 'use client';
 
 import { useState } from 'react';
-import { Trade, Team, Player, TradeStatus, TradeLog } from '@prisma/client';
+import { Trade, Team, Player, TradeStatus, TradeLog, TradePlayer } from '@prisma/client';
 
 interface TradeWithRelations extends Trade {
   fromTeam: Team & { members: any[] };
   toTeam: Team & { members: any[] };
-  playerFrom: Player;
-  playerTo: Player;
+  tradePlayers: (TradePlayer & { player: Player })[];
   logs: TradeLog[];
 }
 
@@ -53,9 +52,18 @@ export default function AdminTradeList({ trades, onTradeAction, loading, showAct
     return trade.fromTeam.girone === trade.toTeam.girone ? 'Locale' : 'Globale';
   };
 
+  const getPlayersFromTeam = (trade: TradeWithRelations, direction: 'FROM' | 'TO') => {
+    return trade.tradePlayers.filter(tp => tp.direction === direction);
+  };
+
+  const getTotalValue = (players: (TradePlayer & { player: Player })[]) => {
+    return players.reduce((sum, tp) => sum + tp.player.value, 0);
+  };
+
   const getValueDifference = (trade: TradeWithRelations) => {
-    const diff = trade.playerFrom.value - trade.playerTo.value + trade.credits;
-    return diff;
+    const fromValue = getTotalValue(getPlayersFromTeam(trade, 'FROM'));
+    const toValue = getTotalValue(getPlayersFromTeam(trade, 'TO'));
+    return fromValue - toValue + trade.credits;
   };
 
   const handleAction = (tradeId: number, action: 'approve' | 'reject') => {
@@ -84,170 +92,228 @@ export default function AdminTradeList({ trades, onTradeAction, loading, showAct
   return (
     <>
       <div className="space-y-4">
-        {trades.map((trade) => (
-          <div key={trade.id} className={`bg-white rounded-lg shadow border ${
-            trade.status === 'ACCEPTED' ? 'border-green-200 ring-2 ring-green-100' : 'border-gray-200'
-          }`}>
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h4 className="text-lg font-semibold text-gray-900">
-                      Trade #{trade.id}
-                    </h4>
-                    {getStatusBadge(trade.status)}
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      getTradeType(trade) === 'Locale' 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-purple-100 text-purple-700'
-                    }`}>
-                      {getTradeType(trade)}
-                    </span>
-                    {trade.status === 'ACCEPTED' && (
-                      <span className="animate-pulse text-red-600 font-medium">
-                        🚨 RICHIEDE AZIONE
+        {trades.map((trade) => {
+          const playersFrom = getPlayersFromTeam(trade, 'FROM');
+          const playersTo = getPlayersFromTeam(trade, 'TO');
+          const fromValue = getTotalValue(playersFrom);
+          const toValue = getTotalValue(playersTo);
+
+          return (
+            <div key={trade.id} className={`bg-white rounded-lg shadow border ${
+              trade.status === 'ACCEPTED' ? 'border-green-200 ring-2 ring-green-100' : 'border-gray-200'
+            }`}>
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        Trade #{trade.id}
+                      </h4>
+                      {getStatusBadge(trade.status)}
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        getTradeType(trade) === 'Locale' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-purple-100 text-purple-700'
+                      }`}>
+                        {getTradeType(trade)}
                       </span>
-                    )}
+                      <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+                        {playersFrom.length}v{playersTo.length}
+                      </span>
+                      {trade.status === 'ACCEPTED' && (
+                        <span className="animate-pulse text-red-600 font-medium">
+                          🚨 RICHIEDE AZIONE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Creato: {new Date(trade.createdAt).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })} • Aggiornato: {new Date(trade.updatedAt).toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Creato: {new Date(trade.createdAt).toLocaleDateString('it-IT', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })} • Aggiornato: {new Date(trade.updatedAt).toLocaleDateString('it-IT', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
+                  <button
+                    onClick={() => setExpandedTrade(expandedTrade === trade.id ? null : trade.id)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {expandedTrade === trade.id ? '▼' : '▶'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => setExpandedTrade(expandedTrade === trade.id ? null : trade.id)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {expandedTrade === trade.id ? '▼' : '▶'}
-                </button>
+
+                {/* Trade Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center mb-4">
+                  {/* From Team */}
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <h5 className="font-medium text-gray-900 mb-1">{trade.fromTeam.name}</h5>
+                    <p className="text-xs text-gray-500 mb-3">Girone {trade.fromTeam.girone}</p>
+                    <div className="space-y-1">
+                      {playersFrom.map((tp) => (
+                        <div key={tp.playerId} className="text-xs">
+                          <p className="font-medium text-red-700">{tp.player.lastname}</p>
+                          <p className="text-gray-600">{tp.player.realteam}</p>
+                          <p className="text-gray-600">Val: {tp.player.value}</p>
+                        </div>
+                      ))}
+                      <div className="pt-1 border-t border-red-200">
+                        <p className="text-sm font-bold text-red-800">Tot: {fromValue}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="text-center">
+                    <div className="text-2xl">↔</div>
+                    <p className="text-xs text-gray-500 mt-1">{playersFrom.length}v{playersTo.length}</p>
+                  </div>
+
+                  {/* To Team */}
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <h5 className="font-medium text-gray-900 mb-1">{trade.toTeam.name}</h5>
+                    <p className="text-xs text-gray-500 mb-3">Girone {trade.toTeam.girone}</p>
+                    <div className="space-y-1">
+                      {playersTo.map((tp) => (
+                        <div key={tp.playerId} className="text-xs">
+                          <p className="font-medium text-green-700">{tp.player.lastname}</p>
+                          <p className="text-gray-600">{tp.player.realteam}</p>
+                          <p className="text-gray-600">Val: {tp.player.value}</p>
+                        </div>
+                      ))}
+                      <div className="pt-1 border-t border-green-200">
+                        <p className="text-sm font-bold text-green-800">Tot: {toValue}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Credits & Analysis */}
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <h6 className="text-sm font-medium text-gray-900 mb-2">Crediti</h6>
+                    <p className="text-lg font-bold text-blue-600">
+                      {trade.credits > 0 ? `+${trade.credits}` : '0'}
+                    </p>
+                    <p className="text-xs text-gray-500">verso {trade.toTeam.name}</p>
+                  </div>
+
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <h6 className="text-sm font-medium text-gray-900 mb-2">Vantaggio</h6>
+                    <p className={`text-lg font-bold ${
+                      getValueDifference(trade) > 0 ? 'text-green-600' : 
+                      getValueDifference(trade) < 0 ? 'text-red-600' : 'text-gray-600'
+                    }`}>
+                      {getValueDifference(trade) > 0 ? '+' : ''}{getValueDifference(trade)}
+                    </p>
+                    <p className="text-xs text-gray-500">per {trade.toTeam.name}</p>
+                  </div>
+                </div>
+
+                {/* Actions for ACCEPTED trades */}
+                {showActions && trade.status === 'ACCEPTED' && (
+                  <div className="flex space-x-3 pt-4 border-t">
+                    <button
+                      onClick={() => handleAction(trade.id, 'approve')}
+                      disabled={loading}
+                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 font-medium"
+                    >
+                      ✅ Approva Scambio
+                    </button>
+                    <button
+                      onClick={() => handleAction(trade.id, 'reject')}
+                      disabled={loading}
+                      className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 font-medium"
+                    >
+                      ❌ Rifiuta Scambio
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Trade Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center mb-4">
-                {/* From Team */}
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <h5 className="font-medium text-gray-900 mb-1">{trade.fromTeam.name}</h5>
-                  <p className="text-xs text-gray-500">Girone {trade.fromTeam.girone}</p>
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-red-700">{trade.playerFrom.lastname}</p>
-                    <p className="text-xs text-gray-600">{trade.playerFrom.realteam}</p>
-                    <p className="text-xs text-gray-600">Valore: {trade.playerFrom.value}</p>
+              {/* Expanded Details */}
+              {expandedTrade === trade.id && (
+                <div className="border-t bg-gray-50 p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Team Details */}
+                    <div>
+                      <h6 className="font-medium text-gray-900 mb-3">Dettagli Team</h6>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Da: {trade.fromTeam.name}</span>
+                          <span className="text-sm text-gray-900">Crediti: {trade.fromTeam.credits}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">A: {trade.toTeam.name}</span>
+                          <span className="text-sm text-gray-900">Crediti: {trade.toTeam.credits}</span>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-600 mb-1">Membri {trade.fromTeam.name}:</p>
+                          <p className="text-gray-900">{trade.fromTeam.members.map(m => m.name).join(', ')}</p>
+                        </div>
+                        <div className="text-sm">
+                          <p className="text-gray-600 mb-1">Membri {trade.toTeam.name}:</p>
+                          <p className="text-gray-900">{trade.toTeam.members.map(m => m.name).join(', ')}</p>
+                        </div>
+
+                        {/* Detailed Player Info */}
+                        <div className="pt-3 border-t">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm font-medium text-red-700 mb-2">Giocatori ceduti:</p>
+                              {playersFrom.map((tp) => (
+                                <div key={tp.playerId} className="text-sm mb-1">
+                                  <p className="font-medium">{tp.player.lastname}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {tp.player.realteam} • Ruolo: {tp.player.role} • Val: {tp.player.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-green-700 mb-2">Giocatori ricevuti:</p>
+                              {playersTo.map((tp) => (
+                                <div key={tp.playerId} className="text-sm mb-1">
+                                  <p className="font-medium">{tp.player.lastname}</p>
+                                  <p className="text-xs text-gray-600">
+                                    {tp.player.realteam} • Ruolo: {tp.player.role} • Val: {tp.player.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Logs */}
+                    <div>
+                      <h6 className="font-medium text-gray-900 mb-3">Cronologia ({trade.logs.length})</h6>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {trade.logs.map((log) => (
+                          <div key={log.id} className="flex items-start space-x-2 text-sm">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <p className="text-gray-800">{log.action}</p>
+                              <p className="text-gray-500 text-xs">
+                                {new Date(log.timestamp).toLocaleString('it-IT')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                {/* Arrow */}
-                <div className="text-center">
-                  <div className="text-2xl">→</div>
-                </div>
-
-                {/* To Team */}
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <h5 className="font-medium text-gray-900 mb-1">{trade.toTeam.name}</h5>
-                  <p className="text-xs text-gray-500">Girone {trade.toTeam.girone}</p>
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-green-700">{trade.playerTo.lastname}</p>
-                    <p className="text-xs text-gray-600">{trade.playerTo.realteam}</p>
-                    <p className="text-xs text-gray-600">Valore: {trade.playerTo.value}</p>
-                  </div>
-                </div>
-
-                {/* Credits & Analysis */}
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <h6 className="text-sm font-medium text-gray-900 mb-2">Crediti</h6>
-                  <p className="text-lg font-bold text-blue-600">
-                    {trade.credits > 0 ? `+${trade.credits}` : '0'}
-                  </p>
-                </div>
-
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <h6 className="text-sm font-medium text-gray-900 mb-2">Vantaggio</h6>
-                  <p className={`text-lg font-bold ${
-                    getValueDifference(trade) > 0 ? 'text-green-600' : 
-                    getValueDifference(trade) < 0 ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {getValueDifference(trade) > 0 ? '+' : ''}{getValueDifference(trade)}
-                  </p>
-                  <p className="text-xs text-gray-500">per {trade.toTeam.name}</p>
-                </div>
-              </div>
-
-              {/* Actions for ACCEPTED trades */}
-              {showActions && trade.status === 'ACCEPTED' && (
-                <div className="flex space-x-3 pt-4 border-t">
-                  <button
-                    onClick={() => handleAction(trade.id, 'approve')}
-                    disabled={loading}
-                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 font-medium"
-                  >
-                    ✅ Approva Scambio
-                  </button>
-                  <button
-                    onClick={() => handleAction(trade.id, 'reject')}
-                    disabled={loading}
-                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 font-medium"
-                  >
-                    ❌ Rifiuta Scambio
-                  </button>
                 </div>
               )}
             </div>
-
-            {/* Expanded Details */}
-            {expandedTrade === trade.id && (
-              <div className="border-t bg-gray-50 p-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Team Details */}
-                  <div>
-                    <h6 className="font-medium text-gray-900 mb-3">Dettagli Team</h6>
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">A: {trade.toTeam.name}</span>
-                        <span className="text-sm text-gray-900">Crediti: {trade.toTeam.credits}</span>
-                      </div>
-                      <div className="text-sm">
-                        <p className="text-gray-600 mb-1">Membri {trade.fromTeam.name}:</p>
-                        <p className="text-gray-900">{trade.fromTeam.members.map(m => m.name).join(', ')}</p>
-                      </div>
-                      <div className="text-sm">
-                        <p className="text-gray-600 mb-1">Membri {trade.toTeam.name}:</p>
-                        <p className="text-gray-900">{trade.toTeam.members.map(m => m.name).join(', ')}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Logs */}
-                  <div>
-                    <h6 className="font-medium text-gray-900 mb-3">Cronologia ({trade.logs.length})</h6>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {trade.logs.map((log) => (
-                        <div key={log.id} className="flex items-start space-x-2 text-sm">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <div className="flex-1">
-                            <p className="text-gray-800">{log.action}</p>
-                            <p className="text-gray-500 text-xs">
-                              {new Date(log.timestamp).toLocaleString('it-IT')}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Action Confirmation Modal */}

@@ -109,75 +109,75 @@ export async function GET(
  * DELETE /api/players/[id]
  * Elimina un player e tutte le sue relazioni
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const playerId = parseInt(id);
+// export async function DELETE(
+//   request: NextRequest,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const { id } = await params;
+//     const playerId = parseInt(id);
     
-    if (isNaN(playerId)) {
-      return NextResponse.json(
-        { error: 'ID player non valido' },
-        { status: 400 }
-      );
-    }
+//     if (isNaN(playerId)) {
+//       return NextResponse.json(
+//         { error: 'ID player non valido' },
+//         { status: 400 }
+//       );
+//     }
 
-    // Verifica se il player esiste
-    const existingPlayer = await prisma.player.findUnique({
-      where: { id: playerId },
-      include: {
-        teams: true,
-        tradeSent: true,
-        tradeReceived: true
-      }
-    });
+//     // Verifica se il player esiste
+//     const existingPlayer = await prisma.player.findUnique({
+//       where: { id: playerId },
+//       include: {
+//         teams: true,
+//         tradeSent: true,
+//         tradeReceived: true
+//       }
+//     });
 
-    if (!existingPlayer) {
-      return NextResponse.json(
-        { error: 'Player non trovato' },
-        { status: 404 }
-      );
-    }
+//     if (!existingPlayer) {
+//       return NextResponse.json(
+//         { error: 'Player non trovato' },
+//         { status: 404 }
+//       );
+//     }
 
-    // Verifica se ci sono trade pendenti
-    const pendingTrades = [...existingPlayer.tradeSent, ...existingPlayer.tradeReceived]
-      .filter(trade => trade.status === 'PENDING');
+//     // Verifica se ci sono trade pendenti
+//     const pendingTrades = [...existingPlayer.tradeSent, ...existingPlayer.tradeReceived]
+//       .filter(trade => trade.status === 'PENDING');
     
-    if (pendingTrades.length > 0) {
-      return NextResponse.json(
-        { error: 'Impossibile eliminare il player: ci sono trade pendenti' },
-        { status: 400 }
-      );
-    }
+//     if (pendingTrades.length > 0) {
+//       return NextResponse.json(
+//         { error: 'Impossibile eliminare il player: ci sono trade pendenti' },
+//         { status: 400 }
+//       );
+//     }
 
-    // Elimina le relazioni e il player in una transazione
-    await prisma.$transaction(async (tx) => {
-      // Elimina prima le relazioni TeamPlayer
-      await tx.teamPlayer.deleteMany({
-        where: { playerId }
-      });
+//     // Elimina le relazioni e il player in una transazione
+//     await prisma.$transaction(async (tx) => {
+//       // Elimina prima le relazioni TeamPlayer
+//       await tx.teamPlayer.deleteMany({
+//         where: { playerId }
+//       });
 
-      // Poi elimina il player
-      await tx.player.delete({
-        where: { id: playerId }
-      });
-    });
+//       // Poi elimina il player
+//       await tx.player.delete({
+//         where: { id: playerId }
+//       });
+//     });
 
-    return NextResponse.json({ 
-      message: 'Player eliminato con successo',
-      playerId 
-    });
+//     return NextResponse.json({ 
+//       message: 'Player eliminato con successo',
+//       playerId 
+//     });
 
-  } catch (error) {
-    console.error('Errore durante l\'eliminazione del player:', error);
-    return NextResponse.json(
-      { error: 'Errore interno del server' },
-      { status: 500 }
-    );
-  }
-}
+//   } catch (error) {
+//     console.error('Errore durante l\'eliminazione del player:', error);
+//     return NextResponse.json(
+//       { error: 'Errore interno del server' },
+//       { status: 500 }
+//     );
+//   }
+// }
 
 /**
  * PATCH /api/players/[id]

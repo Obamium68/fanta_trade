@@ -1,3 +1,4 @@
+//app/api/trades/create/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
@@ -7,10 +8,14 @@ const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
 
 const createTradeSchema = z.object({
-  toTeamId: z.number(),
-  playerFromId: z.number(),
-  playerToId: z.number(),
-  credits: z.number().default(0)
+  toTeamId: z.number().positive(),
+  playersFrom: z.array(z.number().positive()).min(1).max(5),
+  playersTo: z.array(z.number().positive()).min(1).max(5),
+  credits: z.number().min(0).default(0)
+}).refine((data) => {
+  return data.playersFrom.length === data.playersTo.length;
+}, {
+  message: 'Il numero di giocatori ceduti deve essere uguale a quello ricevuto'
 });
 
 export async function POST(request: NextRequest) {
@@ -24,45 +29,71 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createTradeSchema.parse(body);
 
-    // Verifica che il team abbia il giocatore che vuole scambiare
-    const teamPlayer = await prisma.teamPlayer.findFirst({
+    // Verifica che non ci siano duplicati
+    const uniqueFromPlayers = [...new Set(validatedData.playersFrom)];
+    const uniqueToPlayers = [...new Set(validatedData.playersTo)];
+    
+    if (uniqueFromPlayers.length !== validatedData.playersFrom.length) {
+      return NextResponse.json({ error: 'Non puoi selezionare lo stesso giocatore più volte' }, { status: 400 });
+    }
+    
+    if (uniqueToPlayers.length !== validatedData.playersTo.length) {
+      return NextResponse.json({ error: 'Non puoi selezionare lo stesso giocatore più volte' }, { status: 400 });
+    }
+
+    // Verifica che il team abbia tutti i giocatori che vuole scambiare
+    const teamPlayers = await prisma.teamPlayer.findMany({
       where: {
         teamId: decoded.teamId,
-        playerId: validatedData.playerFromId
+        playerId: { in: validatedData.playersFrom }
+      },
+      include: {
+        player: true
       }
     });
 
-    if (!teamPlayer) {
-      return NextResponse.json({ error: 'Giocatore non trovato nella tua rosa' }, { status: 400 });
+    if (teamPlayers.length !== validatedData.playersFrom.length) {
+      return NextResponse.json({ error: 'Alcuni giocatori non sono nella tua rosa' }, { status: 400 });
     }
 
-    // Verifica che l'altro team abbia il giocatore richiesto
-    const targetTeamPlayer = await prisma.teamPlayer.findFirst({
+    // Verifica che l'altro team abbia tutti i giocatori richiesti
+    const targetTeamPlayers = await prisma.teamPlayer.findMany({
       where: {
         teamId: validatedData.toTeamId,
-        playerId: validatedData.playerToId
+        playerId: { in: validatedData.playersTo }
+      },
+      include: {
+        player: true
       }
     });
 
-    if (!targetTeamPlayer) {
-      return NextResponse.json({ error: 'Giocatore non trovato nella rosa del team target' }, { status: 400 });
+    if (targetTeamPlayers.length !== validatedData.playersTo.length) {
+      return NextResponse.json({ error: 'Alcuni giocatori non sono nella rosa del team target' }, { status: 400 });
     }
 
-    // Verifica che i giocatori abbiano lo stesso ruolo
-    const [playerFrom, playerTo] = await Promise.all([
-      prisma.player.findUnique({ where: { id: validatedData.playerFromId } }),
-      prisma.player.findUnique({ where: { id: validatedData.playerToId } })
-    ]);
+    // Verifica bilanciamento per ruolo
+    const fromRoles = teamPlayers.reduce((acc, tp) => {
+      acc[tp.player.role] = (acc[tp.player.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-    if (!playerFrom || !playerTo) {
-      return NextResponse.json({ error: 'Giocatori non trovati' }, { status: 400 });
+    const toRoles = targetTeamPlayers.reduce((acc, tp) => {
+      acc[tp.player.role] = (acc[tp.player.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Verifica che per ogni ruolo il numero sia bilanciato
+    const allRoles = new Set([...Object.keys(fromRoles), ...Object.keys(toRoles)]);
+    
+    for (const role of allRoles) {
+      if ((fromRoles[role] || 0) !== (toRoles[role] || 0)) {
+        return NextResponse.json({ 
+          error: `Il numero di giocatori per ruolo deve essere bilanciato. Ruolo sbilanciato: ${role}` 
+        }, { status: 400 });
+      }
     }
 
-    if (playerFrom.role !== playerTo.role) {
-      return NextResponse.json({ error: 'I giocatori devono avere lo stesso ruolo' }, { status: 400 });
-    }
-
-    // Per scambi globali, verifica che non sia lo stesso giocatore
+    // Ottieni informazioni sui team
     const [fromTeam, toTeam] = await Promise.all([
       prisma.team.findUnique({ where: { id: decoded.teamId } }),
       prisma.team.findUnique({ where: { id: validatedData.toTeamId } })
@@ -72,43 +103,85 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Team non trovati' }, { status: 400 });
     }
 
-    // Se scambio globale (gironi diversi), verifica che non sia lo stesso giocatore
-    if (fromTeam.girone !== toTeam.girone && playerFrom.id === playerTo.id) {
-      return NextResponse.json({ error: 'Non puoi scambiare lo stesso giocatore in scambi globali' }, { status: 400 });
+    // Per scambi globali, verifica che non siano gli stessi giocatori
+    if (fromTeam.girone !== toTeam.girone) {
+      const commonPlayers = validatedData.playersFrom.filter(id => 
+        validatedData.playersTo.includes(id)
+      );
+      if (commonPlayers.length > 0) {
+        return NextResponse.json({ 
+          error: 'Non puoi scambiare gli stessi giocatori in scambi globali' 
+        }, { status: 400 });
+      }
     }
 
-    // Verifica crediti sufficienti se necessario
+    // Verifica crediti sufficienti
     if (validatedData.credits > 0 && fromTeam.credits < validatedData.credits) {
       return NextResponse.json({ error: 'Crediti insufficienti' }, { status: 400 });
     }
 
-    // Crea il trade
-    const trade = await prisma.trade.create({
-      data: {
-        fromTeamId: decoded.teamId,
-        toTeamId: validatedData.toTeamId,
-        playerFromId: validatedData.playerFromId,
-        playerToId: validatedData.playerToId,
-        credits: validatedData.credits,
-        status: 'PENDING'
-      },
+    // Crea il trade con transazione
+    const result = await prisma.$transaction(async (tx) => {
+      // Crea il trade principale
+      const trade = await tx.trade.create({
+        data: {
+          fromTeamId: decoded.teamId,
+          toTeamId: validatedData.toTeamId,
+          credits: validatedData.credits,
+          status: 'PENDING'
+        }
+      });
+
+      // Crea i record TradePlayer per i giocatori ceduti
+      const fromTradesPlayers = await tx.tradePlayer.createMany({
+        data: validatedData.playersFrom.map(playerId => ({
+          tradeId: trade.id,
+          playerId,
+          direction: 'FROM' as const
+        }))
+      });
+
+      // Crea i record TradePlayer per i giocatori ricevuti
+      const toTradesPlayers = await tx.tradePlayer.createMany({
+        data: validatedData.playersTo.map(playerId => ({
+          tradeId: trade.id,
+          playerId,
+          direction: 'TO' as const
+        }))
+      });
+
+      // Crea log iniziale
+      const fromPlayerNames = teamPlayers.map(tp => tp.player.lastname).join(', ');
+      const toPlayerNames = targetTeamPlayers.map(tp => tp.player.lastname).join(', ');
+      
+      await tx.tradeLog.create({
+        data: {
+          tradeId: trade.id,
+          action: `Trade proposto da ${fromTeam.name} a ${toTeam.name}: [${fromPlayerNames}] per [${toPlayerNames}]${validatedData.credits > 0 ? ` + ${validatedData.credits} crediti` : ''}`
+        }
+      });
+
+      return trade;
+    });
+
+    // Ricarica il trade con tutte le relazioni per la risposta
+    const fullTrade = await prisma.trade.findUnique({
+      where: { id: result.id },
       include: {
         fromTeam: true,
         toTeam: true,
-        playerFrom: true,
-        playerTo: true
+        tradePlayers: {
+          include: {
+            player: true
+          }
+        },
+        logs: {
+          orderBy: { timestamp: 'desc' }
+        }
       }
     });
 
-    // Crea log iniziale
-    await prisma.tradeLog.create({
-      data: {
-        tradeId: trade.id,
-        action: `Trade proposto da ${fromTeam.name} a ${toTeam.name}: ${playerFrom.lastname} per ${playerTo.lastname}${validatedData.credits > 0 ? ` + ${validatedData.credits} crediti` : ''}`
-      }
-    });
-
-    return NextResponse.json({ trade });
+    return NextResponse.json({ trade: fullTrade });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Dati non validi', details: error.issues }, { status: 400 });

@@ -1,4 +1,4 @@
-// app/api/admin/trades/route.ts - Lista trade per admin con filtri
+// app/api/admin/trades/route.ts - Lista trade per admin con filtri (multi-player support)
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
@@ -25,9 +25,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
 
     const where: any = {};
+    
     if (status) {
       where.status = status;
     }
+
     if (teamId) {
       where.OR = [
         { fromTeamId: parseInt(teamId) },
@@ -41,8 +43,11 @@ export async function GET(request: NextRequest) {
         include: {
           fromTeam: true,
           toTeam: true,
-          playerFrom: true,
-          playerTo: true,
+          tradePlayers: {
+            include: {
+              player: true
+            }
+          },
           logs: {
             orderBy: { timestamp: 'desc' },
             take: 5 // Solo gli ultimi 5 log per prestazioni
@@ -69,4 +74,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
   }
 }
-

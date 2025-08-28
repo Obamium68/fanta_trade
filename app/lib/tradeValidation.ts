@@ -1,5 +1,4 @@
-// app/lib/utils/tradeValidation.ts - Utility per validazione trade
-import { PrismaClient, Team, Player } from '@prisma/client';
+import { PrismaClient, TradeStatus, TradeDirection } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -11,106 +10,100 @@ export interface TradeValidationResult {
 export async function validateTradeRequest(
   fromTeamId: number,
   toTeamId: number,
-  playerFromId: number,
-  playerToId: number,
+  playersFromIds: number[],
+  playersToIds: number[],
   credits: number
 ): Promise<TradeValidationResult> {
   try {
-    // Verifica che i team esistano
+    // 1. Verifica che i team esistano
     const [fromTeam, toTeam] = await Promise.all([
       prisma.team.findUnique({ where: { id: fromTeamId } }),
-      prisma.team.findUnique({ where: { id: toTeamId } })
+      prisma.team.findUnique({ where: { id: toTeamId } }),
     ]);
 
-    if (!fromTeam) {
-      return { isValid: false, error: 'Team mittente non trovato' };
-    }
+    if (!fromTeam) return { isValid: false, error: 'Team mittente non trovato' };
+    if (!toTeam) return { isValid: false, error: 'Team destinazione non trovato' };
 
-    if (!toTeam) {
-      return { isValid: false, error: 'Team destinazione non trovato' };
-    }
-
-    // Verifica che non sia lo stesso team
+    // 2. Non puoi scambiare con te stesso
     if (fromTeamId === toTeamId) {
       return { isValid: false, error: 'Non puoi scambiare con te stesso' };
     }
 
-    // Verifica crediti sufficienti
+    // 3. Verifica crediti
     if (credits > fromTeam.credits) {
       return { isValid: false, error: 'Crediti insufficienti' };
     }
 
-    // Verifica che il team mittente abbia il giocatore
-    const teamPlayerFrom = await prisma.teamPlayer.findFirst({
-      where: {
-        teamId: fromTeamId,
-        playerId: playerFromId
-      }
+    // 4. Verifica che il team mittente abbia tutti i giocatori che vuole dare
+    const fromTeamPlayers = await prisma.teamPlayer.findMany({
+      where: { teamId: fromTeamId, playerId: { in: playersFromIds } },
+    });
+    if (fromTeamPlayers.length !== playersFromIds.length) {
+      return { isValid: false, error: 'Alcuni giocatori da cedere non appartengono al tuo team' };
+    }
+
+    // 5. Verifica che il team destinatario abbia tutti i giocatori che vuole dare
+    const toTeamPlayers = await prisma.teamPlayer.findMany({
+      where: { teamId: toTeamId, playerId: { in: playersToIds } },
+    });
+    if (toTeamPlayers.length !== playersToIds.length) {
+      return { isValid: false, error: 'Alcuni giocatori da ricevere non appartengono al team destinazione' };
+    }
+
+    // 6. Controllo dei ruoli: ogni giocatore da scambiare deve essere dello stesso ruolo del corrispettivo
+    const allPlayers = await prisma.player.findMany({
+      where: { id: { in: [...playersFromIds, ...playersToIds] } },
     });
 
-    if (!teamPlayerFrom) {
-      return { isValid: false, error: 'Giocatore non trovato nella tua rosa' };
+    const playersFrom = allPlayers.filter(p => playersFromIds.includes(p.id));
+    const playersTo = allPlayers.filter(p => playersToIds.includes(p.id));
+
+    if (playersFrom.length !== playersFromIds.length || playersTo.length !== playersToIds.length) {
+      return { isValid: false, error: 'Alcuni giocatori non esistono' };
     }
 
-    // Verifica che il team destinazione abbia il giocatore
-    const teamPlayerTo = await prisma.teamPlayer.findFirst({
-      where: {
-        teamId: toTeamId,
-        playerId: playerToId
+    // Se si vuole imporre che i ruoli siano sempre uguali 1:1, fai un controllo per indice
+    if (playersFromIds.length === playersToIds.length) {
+      for (let i = 0; i < playersFrom.length; i++) {
+        if (playersFrom[i].role !== playersTo[i].role) {
+          return { isValid: false, error: 'I giocatori scambiati devono avere ruoli corrispondenti' };
+        }
       }
-    });
-
-    if (!teamPlayerTo) {
-      return { isValid: false, error: 'Giocatore non trovato nella rosa del team destinazione' };
     }
 
-    // Verifica che i giocatori esistano e abbiano lo stesso ruolo
-    const [playerFrom, playerTo] = await Promise.all([
-      prisma.player.findUnique({ where: { id: playerFromId } }),
-      prisma.player.findUnique({ where: { id: playerToId } })
-    ]);
-
-    if (!playerFrom) {
-      return { isValid: false, error: 'Giocatore mittente non trovato' };
+    // 7. Controllo tra gironi diversi → no scambio dello stesso giocatore
+    if (fromTeam.girone !== toTeam.girone) {
+      const samePlayers = playersFromIds.some(id => playersToIds.includes(id));
+      if (samePlayers) {
+        return { isValid: false, error: 'Non puoi scambiare lo stesso giocatore tra gironi diversi' };
+      }
     }
 
-    if (!playerTo) {
-      return { isValid: false, error: 'Giocatore destinazione non trovato' };
-    }
-
-    if (playerFrom.role !== playerTo.role) {
-      return { isValid: false, error: 'I giocatori devono avere lo stesso ruolo' };
-    }
-
-    // Per scambi globali (gironi diversi), verifica che non sia lo stesso giocatore
-    if (fromTeam.girone !== toTeam.girone && playerFromId === playerToId) {
-      return { isValid: false, error: 'Non puoi scambiare lo stesso giocatore in scambi tra gironi diversi' };
-    }
-
-    // Verifica che non ci sia già un trade pending tra gli stessi giocatori
+    // 8. Verifica che non ci sia già un trade pendente con questi giocatori
     const existingTrade = await prisma.trade.findFirst({
       where: {
+        status: TradeStatus.PENDING,
         OR: [
           {
             fromTeamId,
             toTeamId,
-            playerFromId,
-            playerToId,
-            status: 'PENDING'
+            tradePlayers: {
+              some: { playerId: { in: [...playersFromIds, ...playersToIds] } },
+            },
           },
           {
             fromTeamId: toTeamId,
             toTeamId: fromTeamId,
-            playerFromId: playerToId,
-            playerToId: playerFromId,
-            status: 'PENDING'
-          }
-        ]
-      }
+            tradePlayers: {
+              some: { playerId: { in: [...playersFromIds, ...playersToIds] } },
+            },
+          },
+        ],
+      },
     });
 
     if (existingTrade) {
-      return { isValid: false, error: 'Esiste già un trade pending per questi giocatori' };
+      return { isValid: false, error: 'Esiste già un trade pendente con almeno uno di questi giocatori' };
     }
 
     return { isValid: true };
@@ -120,10 +113,11 @@ export async function validateTradeRequest(
   }
 }
 
+// Verifica se le fasi di scambio sono aperte
 export async function checkTradePhaseOpen(): Promise<TradeValidationResult> {
   try {
     const tradePhase = await prisma.tradePhase.findFirst({
-      orderBy: { id: 'desc' }
+      orderBy: { id: 'desc' },
     });
 
     if (!tradePhase) {
@@ -135,18 +129,18 @@ export async function checkTradePhaseOpen(): Promise<TradeValidationResult> {
     }
 
     const now = new Date();
-    
+
     if (tradePhase.startTime && now < tradePhase.startTime) {
-      return { 
-        isValid: false, 
-        error: `Le fasi di scambio inizieranno il ${tradePhase.startTime.toLocaleDateString('it-IT')}` 
+      return {
+        isValid: false,
+        error: `Le fasi di scambio inizieranno il ${tradePhase.startTime.toLocaleDateString('it-IT')}`,
       };
     }
 
     if (tradePhase.endTime && now > tradePhase.endTime) {
-      return { 
-        isValid: false, 
-        error: `Le fasi di scambio sono terminate il ${tradePhase.endTime.toLocaleDateString('it-IT')}` 
+      return {
+        isValid: false,
+        error: `Le fasi di scambio sono terminate il ${tradePhase.endTime.toLocaleDateString('it-IT')}`,
       };
     }
 

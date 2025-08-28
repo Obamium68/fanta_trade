@@ -97,77 +97,7 @@ export default function AdminTradeStats({ stats }: AdminTradeStatsProps) {
         ))}
       </div>
 
-      {/* Additional Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Analisi Performance</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Tasso di Completamento:</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-20 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full" 
-                    style={{ width: `${completionRate}%` }}
-                  ></div>
-                </div>
-                <span className="text-green-600 font-medium">{completionRate}%</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Tasso di Rifiuto:</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-20 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-red-500 h-2 rounded-full" 
-                    style={{ width: `${rejectionRate}%` }}
-                  ></div>
-                </div>
-                <span className="text-red-600 font-medium">{rejectionRate}%</span>
-              </div>
-            </div>
-            <div className="flex justify-between pt-2 border-t">
-              <span className="text-gray-600">Trade Attivi:</span>
-              <span className="font-medium text-blue-600">
-                {stats.pending + stats.accepted}
-              </span>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Azioni Rapide</h3>
-          <div className="space-y-3">
-            <button className="w-full text-left p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-              <div className="flex items-center space-x-3">
-                <span className="text-blue-600 text-lg">📋</span>
-                <div>
-                  <div className="font-medium text-blue-900">Esporta Report</div>
-                  <div className="text-sm text-blue-600">Scarica report dettagliato dei trade</div>
-                </div>
-              </div>
-            </button>
-            <button className="w-full text-left p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors">
-              <div className="flex items-center space-x-3">
-                <span className="text-green-600 text-lg">⚡</span>
-                <div>
-                  <div className="font-medium text-green-900">Approva Tutti Validi</div>
-                  <div className="text-sm text-green-600">Approva automaticamente trade bilanciati</div>
-                </div>
-              </div>
-            </button>
-            <button className="w-full text-left p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
-              <div className="flex items-center space-x-3">
-                <span className="text-purple-600 text-lg">🔧</span>
-                <div>
-                  <div className="font-medium text-purple-900">Gestisci Fasi</div>
-                  <div className="text-sm text-purple-600">Apri/Chiudi periodi di scambio</div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

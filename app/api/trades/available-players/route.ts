@@ -1,3 +1,4 @@
+//app/api/trades/available-players/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';

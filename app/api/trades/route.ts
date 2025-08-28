@@ -1,3 +1,4 @@
+//app/api/trades/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
@@ -13,19 +14,50 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const type = url.searchParams.get('type') || 'all'; // 'incoming', 'outgoing', 'all'
+
+    let whereCondition: any = {
+      OR: [
+        { fromTeamId: decoded.teamId },
+        { toTeamId: decoded.teamId }
+      ]
+    };
+
+    // Filtra per stato se specificato
+    if (status && ['PENDING', 'ACCEPTED', 'REJECTED', 'APPROVED'].includes(status)) {
+      whereCondition.status = status;
+    }
+
+    // Filtra per tipo se specificato
+    if (type === 'incoming') {
+      whereCondition = {
+        toTeamId: decoded.teamId,
+        ...(status && { status })
+      };
+    } else if (type === 'outgoing') {
+      whereCondition = {
+        fromTeamId: decoded.teamId,
+        ...(status && { status })
+      };
+    }
+
     const trades = await prisma.trade.findMany({
-      where: {
-        OR: [
-          { fromTeamId: decoded.teamId },
-          { toTeamId: decoded.teamId }
-        ]
-      },
+      where: whereCondition,
       include: {
         fromTeam: true,
         toTeam: true,
-        playerFrom: true,
-        playerTo: true,
+        tradePlayers: {
+          include: {
+            player: true
+          },
+          orderBy: [
+            { direction: 'asc' }, // Prima FROM poi TO
+            { player: { role: 'asc' } }, // Poi per ruolo
+            { player: { lastname: 'asc' } } // Poi alfabeticamente
+          ]
+        },
         logs: {
           orderBy: { timestamp: 'desc' }
         }

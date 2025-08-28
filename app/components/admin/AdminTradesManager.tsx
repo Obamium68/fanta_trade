@@ -1,19 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Trade, Team, Player, TradeStatus, TradeLog, TradePhase } from '@prisma/client';
+import { Trade, Team, Player, TradeStatus, TradeLog, TradePhase, TradePlayer } from '@prisma/client';
 import AdminTradeList from './AdminTradeList';
 import AdminTradePhaseManager from './AdminTradePhaseManager';
 import AdminTradeStats from './AdminTradeStats';
-// import AdminTradeList from './AdminTradeList';
-// import AdminTradePhaseManager from './AdminTradePhaseManager';
-// import AdminTradeStats from './AdminTradeStats';
 
 interface TradeWithRelations extends Trade {
   fromTeam: Team & { members: any[] };
   toTeam: Team & { members: any[] };
-  playerFrom: Player;
-  playerTo: Player;
+  tradePlayers: (TradePlayer & { player: Player })[];
   logs: TradeLog[];
 }
 

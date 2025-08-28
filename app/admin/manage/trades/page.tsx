@@ -24,8 +24,11 @@ export default async function AdminTradesPage() {
             members: true
           }
         },
-        playerFrom: true,
-        playerTo: true,
+        tradePlayers: {
+          include: {
+            player: true
+          }
+        },
         logs: {
           orderBy: { timestamp: 'desc' }
         }
@@ -68,9 +71,9 @@ export default async function AdminTradesPage() {
           </div>
         </header>
 
-        <AdminTradeManager 
-          trades={trades} 
-          stats={stats} 
+        <AdminTradeManager
+          trades={trades}
+          stats={stats}
           tradePhase={tradePhase}
         />
       </div>
