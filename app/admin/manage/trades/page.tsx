@@ -60,7 +60,7 @@ export default async function AdminTradesPage() {
                 Gestione Trade - Admin Panel
               </h1>
               <div className="flex items-center space-x-4">
-                <a href="/admin/manage" className="text-gray-600 hover:text-gray-900">
+                <a href="/admin/" className="text-gray-600 hover:text-gray-900">
                   ← Torna al pannello
                 </a>
                 <a href="/admin/logout" className="text-red-600 hover:text-red-800">

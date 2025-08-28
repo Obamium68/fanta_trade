@@ -41,7 +41,7 @@ export default function AdminLogin() {
 
   return (
     <div className="flex items-center justify-center">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full px-4 space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Admin Login
