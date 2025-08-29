@@ -265,17 +265,6 @@ export default function AdminTradePhaseManager({ currentPhase }: AdminTradePhase
           </button>
         </form>
       </div>
-
-      {/* Phase History (if you want to add this feature) */}
-      <div className="bg-white rounded-lg shadow p-6 mt-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Cronologia Fasi</h3>
-        <div className="text-center p-8 bg-gray-50 rounded-lg">
-          <div className="text-gray-400 text-4xl mb-4">📅</div>
-          <p className="text-gray-600">
-            Funzionalità in sviluppo: qui verrà mostrata la cronologia delle fasi di scambio precedenti.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

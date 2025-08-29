@@ -1,7 +1,5 @@
 // app/admin/manage/trades/page.tsx
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import AdminTradeManager from '@/app/components/admin/AdminTradesManager';
 
@@ -36,6 +34,7 @@ export default async function AdminTradesPage() {
       orderBy: { updatedAt: 'desc' }
     });
 
+    console.log(`Loaded ${trades.length} trades from database.`);
     // Statistiche per dashboard admin
     const stats = {
       total: trades.length,
@@ -50,6 +49,7 @@ export default async function AdminTradesPage() {
     const tradePhase = await prisma.tradePhase.findFirst({
       orderBy: { id: 'desc' }
     });
+    console.log('Current Trade Phase:', tradePhase);
 
     return (
       <div className="min-h-screen bg-gray-50">
