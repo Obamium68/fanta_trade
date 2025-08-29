@@ -49,7 +49,6 @@ export default async function AdminTradesPage() {
     const tradePhase = await prisma.tradePhase.findFirst({
       orderBy: { id: 'desc' }
     });
-    console.log('Current Trade Phase:', tradePhase);
 
     return (
       <div className="min-h-screen bg-gray-50">
