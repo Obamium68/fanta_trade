@@ -12,23 +12,18 @@ const adminTradeActionSchema = z.object({
     reason: z.string().optional()
 });
 
+// CORRETTO: Next.js 15+ params sono asincroni
 interface RouteContext {
-    params: {
+    params: Promise<{
         tradeId: string;
-        then: <TResult1 = any, TResult2 = never>(
-            onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-            onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
-        ) => Promise<TResult1 | TResult2>;
-        catch: <TResult = never>(
-            onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
-        ) => Promise<any>;
-        finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
-        [Symbol.toStringTag]: string;
-    }
+    }>;
 }
 
-export async function PUT(request: NextRequest, {params}: RouteContext) {
+export async function PUT(request: NextRequest, context: RouteContext) {
     try {
+        // IMPORTANTE: await params in Next.js 15+
+        const { tradeId } = await context.params;
+        
         const token = request.cookies.get('admin-auth')?.value;
         if (!token) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
@@ -41,11 +36,11 @@ export async function PUT(request: NextRequest, {params}: RouteContext) {
 
         const body = await request.json();
         const validatedData = adminTradeActionSchema.parse(body);
-        const tradeId = parseInt(params.tradeId);
+        const tradeIdNum = parseInt(tradeId);
 
         // Trova il trade con la struttura multi-player
         const trade = await prisma.trade.findUnique({
-            where: { id: tradeId },
+            where: { id: tradeIdNum },
             include: {
                 fromTeam: true,
                 toTeam: true,
@@ -152,7 +147,7 @@ export async function PUT(request: NextRequest, {params}: RouteContext) {
 
                 // Aggiorna stato trade
                 await tx.trade.update({
-                    where: { id: tradeId },
+                    where: { id: tradeIdNum },
                     data: { status: 'APPROVED' }
                 });
 
@@ -178,7 +173,7 @@ export async function PUT(request: NextRequest, {params}: RouteContext) {
             await prisma.$transaction(async (tx) => {
                 // Aggiorna stato trade
                 await tx.trade.update({
-                    where: { id: tradeId },
+                    where: { id: tradeIdNum },
                     data: { status: 'REJECTED' }
                 });
 
@@ -211,11 +206,16 @@ export async function PUT(request: NextRequest, {params}: RouteContext) {
         }
         
         return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
     try {
+        // IMPORTANTE: await params in Next.js 15+
+        const { tradeId } = await context.params;
+        
         const token = request.cookies.get('admin-auth')?.value;
         if (!token) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
@@ -226,11 +226,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
         }
 
-        const { params } = context;
-        const tradeId = parseInt(params.tradeId);
+        const tradeIdNum = parseInt(tradeId);
 
         const trade = await prisma.trade.findUnique({
-            where: { id: tradeId },
+            where: { id: tradeIdNum },
             include: {
                 fromTeam: true,
                 toTeam: true,
@@ -253,5 +252,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
     } catch (error) {
         console.error('Get admin trade error:', error);
         return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
     }
 }
+
+// VERSIONE ALTERNATIVA SENZA RouteContext (più semplice):
+/*
+export async function PUT(
+    request: NextRequest, 
+    { params }: { params: Promise<{ tradeId: string }> }
+) {
+    const { tradeId } = await params;
+    // ... resto del codice
+}
+
+export async function GET(
+    request: NextRequest, 
+    { params }: { params: Promise<{ tradeId: string }> }
+) {
+    const { tradeId } = await params;
+    // ... resto del codice
+}
+*/

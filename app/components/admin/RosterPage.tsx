@@ -244,7 +244,7 @@ export default function AdminRosterPage({ teamId }: AdminRosterPageProps) {
                 Gestione Rosa - {team.name}
               </h1>
               <p className="text-gray-600 mt-1">
-                Campionato {team.girone} • {stats.totalPlayers}/25 giocatori • €{stats.totalValue} valore totale
+                Campionato {team.girone} • {stats.totalPlayers}/25 giocatori • {stats.totalValue} valore totale
               </p>
             </div>
             <div className="flex space-x-3">
@@ -316,7 +316,7 @@ export default function AdminRosterPage({ teamId }: AdminRosterPageProps) {
                     <div className="text-sm text-gray-600 mb-3">
                       <div>🏟️ {player.realteam}</div>
                       <div className="flex justify-between items-center">
-                        <span>💰 €{player.value}</span>
+                        <span>💰 {player.value}</span>
                         <span>#{player.id}</span>
                       </div>
                     </div>
@@ -385,7 +385,7 @@ export default function AdminRosterPage({ teamId }: AdminRosterPageProps) {
                         <div className="text-sm text-gray-600 mb-4 space-y-1">
                           <div className="flex justify-between">
                             <span>🏟️ {player.realteam}</span>
-                            <span className="font-semibold text-green-600">€{player.value}</span>
+                            <span className="font-semibold text-green-600">{player.value}</span>
                           </div>
                           {player.teamsCount > 1 && (
                             <div className="text-xs text-orange-600">

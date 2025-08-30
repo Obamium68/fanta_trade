@@ -1,3 +1,4 @@
+// app/api/teams/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
@@ -5,8 +6,6 @@ import { z } from 'zod';
 import { registerSchema } from '@/app/lib/validators/auth';
 
 const prisma = new PrismaClient();
-
-
 
 
 export async function POST(request: NextRequest) {

@@ -120,7 +120,7 @@ export default function TeamRoster({ teamId }: TeamRosterProps) {
               Rosa della Squadra
             </h3>
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Valore: €{stats.totalValue}</span>
+              <span className="font-medium">Valore: {stats.totalValue}</span>
               <span className="ml-4">Giocatori: {stats.totalPlayers}/25</span>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function TeamRoster({ teamId }: TeamRosterProps) {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span className="text-gray-600">🏟️ {player.realteam}</span>
-                              <span className="font-semibold text-green-600">€{player.value}</span>
+                              <span className="font-semibold text-green-600">{player.value}</span>
                             </div>
                             
                             {player.teamsCount > 1 && (
@@ -211,19 +211,19 @@ export default function TeamRoster({ teamId }: TeamRosterProps) {
                 <div className="bg-blue-50 p-3 rounded">
                   <div className="text-sm text-gray-600">Valore Medio</div>
                   <div className="text-lg font-semibold text-blue-600">
-                    €{Math.round(stats.totalValue / stats.totalPlayers)}
+                    {Math.round(stats.totalValue / stats.totalPlayers)}
                   </div>
                 </div>
                 <div className="bg-green-50 p-3 rounded">
                   <div className="text-sm text-gray-600">Più Costoso</div>
                   <div className="text-lg font-semibold text-green-600">
-                    €{Math.max(...players.map(p => p.value))}
+                    {Math.max(...players.map(p => p.value))}
                   </div>
                 </div>
                 <div className="bg-purple-50 p-3 rounded">
                   <div className="text-sm text-gray-600">Più Economico</div>
                   <div className="text-lg font-semibold text-purple-600">
-                    €{Math.min(...players.map(p => p.value))}
+                    {Math.min(...players.map(p => p.value))}
                   </div>
                 </div>
                 <div className="bg-orange-50 p-3 rounded">

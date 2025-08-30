@@ -4,52 +4,45 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-
+// CORRETTO: Next.js 15+ params sono asincroni
 interface RouteContext {
-    params: {
-        teamId: string;
-        then: <TResult1 = any, TResult2 = never>(
-            onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-            onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
-        ) => Promise<TResult1 | TResult2>;
-        catch: <TResult = never>(
-            onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
-        ) => Promise<any>;
-        finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
-        [Symbol.toStringTag]: string;
-    }
-};
+    params: Promise<{
+        id: string;
+    }>;
+}
 
 export async function GET(
   request: NextRequest,
   context: RouteContext
 ) {
   try {
-    const { params } = context;
-    const teamId = parseInt(params.teamId);
+    // IMPORTANTE: await params in Next.js 15+
+    const { id } = await context.params;
+    const teamIdNum = parseInt(id);
+    
     // Verifica che il teamId sia valido
-    if (isNaN(teamId)) {
+    if (isNaN(teamIdNum)) {
       return NextResponse.json(
         { error: 'ID squadra non valido' },
         { status: 400 }
       );
     }
-
+    
     // Verifica che la squadra esista
     const team = await prisma.team.findUnique({
-      where: { id: teamId }
+      where: { id: teamIdNum }
     });
-
+    
     if (!team) {
       return NextResponse.json(
         { error: 'Squadra non trovata' },
         { status: 404 }
       );
     }
-
+    
     // Ottieni tutti i giocatori della squadra con le informazioni complete
     const teamPlayers = await prisma.teamPlayer.findMany({
-      where: { teamId: teamId },
+      where: { teamId: teamIdNum },
       include: {
         player: true
       },
@@ -58,7 +51,7 @@ export async function GET(
         { player: { lastname: 'asc' } }
       ]
     });
-
+    
     // Trasforma i dati per includere solo le informazioni del player
     const players = teamPlayers.map(tp => ({
       id: tp.player.id,
@@ -68,7 +61,7 @@ export async function GET(
       role: tp.player.role,
       teamsCount: tp.player.teamsCount
     }));
-
+    
     // Calcola statistiche della rosa
     const stats = {
       totalPlayers: players.length,
@@ -80,7 +73,7 @@ export async function GET(
         ATTACCANTE: players.filter(p => p.role === 'ATTACCANTE').length
       }
     };
-
+    
     return NextResponse.json({
       success: true,
       players,
@@ -92,7 +85,7 @@ export async function GET(
         credits: team.credits
       }
     });
-
+    
   } catch (error) {
     console.error('Error fetching team roster:', error);
     return NextResponse.json(
@@ -103,3 +96,15 @@ export async function GET(
     await prisma.$disconnect();
   }
 }
+
+// VERSIONE ALTERNATIVA SENZA RouteContext (più semplice):
+/*
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  const { teamId } = await params;
+  const teamIdNum = parseInt(teamId);
+  // ... resto del codice
+}
+*/

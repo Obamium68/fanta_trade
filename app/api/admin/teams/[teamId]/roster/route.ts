@@ -5,30 +5,22 @@ import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
+// CORREGGI QUESTO TIPO - Next.js 15+ usa questa struttura
 interface RouteContext {
-  params: {
+  params: Promise<{
     teamId: string;
-    then: <TResult1 = any, TResult2 = never>(
-      onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-      onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
-    ) => Promise<TResult1 | TResult2>;
-    catch: <TResult = never>(
-      onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
-    ) => Promise<any>;
-    finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
-    [Symbol.toStringTag]: string;
-  }
-};
-
+  }>;
+}
 
 // GET - Ottieni rosa di una squadra specifica (per admin)
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { teamId } = context.params;
+  // IMPORTANTE: Devi await params in Next.js 15+
+  const { teamId } = await context.params;
 
   try {
     // Verifica autenticazione admin
-    const cookieStore = cookies();
-    const token = (await cookieStore).get("auth-token")?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
 
     const teamIdNum = parseInt(teamId);
 
@@ -105,11 +97,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 // POST - Aggiungi giocatore alla rosa
 export async function POST(request: NextRequest, context: RouteContext) {
-  const { teamId } = context.params;
+  // IMPORTANTE: Devi await params in Next.js 15+
+  const { teamId } = await context.params;
 
   try {
-    const cookieStore = cookies();
-    const token = (await cookieStore).get("auth-token")?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
 
     const teamIdNum = parseInt(teamId);
     const { playerId } = await request.json();
@@ -180,11 +173,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
 // DELETE - Rimuovi giocatore dalla rosa
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const { teamId } = context.params;
+  // IMPORTANTE: Devi await params in Next.js 15+
+  const { teamId } = await context.params;
 
   try {
-    const cookieStore = cookies();
-    const token = (await cookieStore).get("auth-token")?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
 
     const teamIdNum = parseInt(teamId);
     const { searchParams } = new URL(request.url);
@@ -240,3 +234,32 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     await prisma.$disconnect();
   }
 }
+
+// VERSIONE ALTERNATIVA: Senza definire RouteContext (più semplice)
+/* 
+Puoi anche rimuovere completamente RouteContext e usare direttamente:
+
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  const { teamId } = await params;
+  // ... resto del codice
+}
+
+export async function POST(
+  request: NextRequest, 
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  const { teamId } = await params;
+  // ... resto del codice
+}
+
+export async function DELETE(
+  request: NextRequest, 
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  const { teamId } = await params;
+  // ... resto del codice
+}
+*/

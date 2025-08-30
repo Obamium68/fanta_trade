@@ -12,23 +12,14 @@ const updateTradeSchema = z.object({
 });
 
 interface RouteContext {
-    params: {
+    params: Promise<{
         tradeId: string;
-        then: <TResult1 = any, TResult2 = never>(
-            onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-            onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
-        ) => Promise<TResult1 | TResult2>;
-        catch: <TResult = never>(
-            onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
-        ) => Promise<any>;
-        finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
-        [Symbol.toStringTag]: string;
-    }
+    }>;
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -37,11 +28,14 @@ export async function GET(
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const tradeId = parseInt(params.tradeId);
+
+    const { tradeId } = await context.params;
+    const tradeIdNum = parseInt(tradeId);
+
 
     const trade = await prisma.trade.findFirst({
       where: {
-        id: tradeId,
+        id: tradeIdNum,
         OR: [
           { fromTeamId: decoded.teamId },
           { toTeamId: decoded.teamId }
@@ -74,7 +68,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -82,15 +76,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
+    const { tradeId } = await context.params;
+    const tradeNumId = parseInt(tradeId);
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const tradeId = parseInt(params.tradeId);
+    
     const body = await request.json();
     const { action } = updateTradeSchema.parse(body);
 
     // Trova il trade e verifica che appartenga al team corretto
     const trade = await prisma.trade.findFirst({
       where: {
-        id: tradeId,
+        id: tradeNumId,
         toTeamId: decoded.teamId, // Solo il team destinatario può accettare/rifiutare
         status: 'PENDING'
       },
@@ -150,7 +146,7 @@ export async function PUT(
 
         // Aggiorna solo lo stato del trade - NON eseguire lo scambio
         const updatedTrade = await tx.trade.update({
-          where: { id: tradeId },
+          where: { id: tradeNumId },
           data: { status: 'ACCEPTED' }
         });
 
@@ -160,7 +156,7 @@ export async function PUT(
         
         await tx.tradeLog.create({
           data: {
-            tradeId: tradeId,
+            tradeId: tradeNumId,
             action: `Trade accettato da ${trade.toTeam.name}. In attesa di approvazione admin per: [${fromPlayerNames}] → ${trade.toTeam.name}, [${toPlayerNames}] → ${trade.fromTeam.name}${trade.credits > 0 ? `, ${trade.credits} crediti da trasferire` : ''}`
           }
         });
@@ -177,14 +173,14 @@ export async function PUT(
       // Rifiuta il trade
       const updatedTrade = await prisma.$transaction(async (tx) => {
         const result = await tx.trade.update({
-          where: { id: tradeId },
+          where: { id: tradeNumId },
           data: { status: 'REJECTED' }
         });
 
         // Crea log del rifiuto
         await tx.tradeLog.create({
           data: {
-            tradeId: tradeId,
+            tradeId: tradeNumId,
             action: `Trade rifiutato da ${trade.toTeam.name}`
           }
         });
@@ -217,7 +213,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
+  context : RouteContext
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -226,7 +222,7 @@ export async function DELETE(
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const tradeId = parseInt(params.tradeId);
+    const tradeId = parseInt((await context.params).tradeId);
 
     // Solo il creatore può cancellare un trade in sospeso o accettato ma non ancora approvato
     const trade = await prisma.trade.findFirst({

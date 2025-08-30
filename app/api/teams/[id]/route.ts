@@ -8,26 +8,17 @@ import { Girone } from '@prisma/client';
 const prisma = new PrismaClient().$extends(withAccelerate());
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     id: string;
-    then: <TResult1 = any, TResult2 = never>(
-      onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-      onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
-    ) => Promise<TResult1 | TResult2>;
-    catch: <TResult = never>(
-      onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null | undefined
-    ) => Promise<any>;
-    finally: (onfinally?: (() => void) | null | undefined) => Promise<any>;
-    [Symbol.toStringTag]: string;
-  }
+  }>;
 };
 
 
 // GET - Recuperare un team specifico
 export async function GET(req: Request, context: RouteContext) {
   try {
-    const { params } = context;
-    const teamId = parseInt(params.id);
+    const { id } = await context.params;
+    const teamId = parseInt(id);
 
     if (isNaN(teamId)) {
       return NextResponse.json(
@@ -95,8 +86,8 @@ export async function GET(req: Request, context: RouteContext) {
 // PUT - Modificare completamente un team
 export async function PUT(req: Request, context: RouteContext) {
   try {
-    const { params } = context;
-    const teamId = parseInt(params.id);
+    const { id } = await context.params;
+    const teamId = parseInt(id);
     const body = await req.json();
     const { name, password, girone, credits } = body;
 
@@ -232,15 +223,16 @@ export async function PUT(req: Request, context: RouteContext) {
 }
 
 // PATCH - Modificare parzialmente un team
-export async function PATCH(req: Request, { params }: RouteContext) {
+export async function PATCH(req: Request, context: RouteContext) {
   // Stessa logica del PUT ma più esplicita per aggiornamenti parziali
-  return PUT(req, { params });
+  return PUT(req, context);
 }
 
 // DELETE - Eliminare un team
-export async function DELETE(req: Request, { params }: RouteContext) {
+export async function DELETE(req: Request, context: RouteContext) {
   try {
-    const teamId = parseInt(params.id);
+    const { id } = await context.params;
+    const teamId = parseInt(id);
 
     console.log("🗑️ Eliminazione team ID:", teamId);
 
