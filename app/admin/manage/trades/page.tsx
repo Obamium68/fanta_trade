@@ -1,4 +1,4 @@
-// app/admin/manage/trades/page.tsx
+// app/admin/manage/trades/page.tsx 
 import { redirect } from 'next/navigation';
 import { PrismaClient } from '@prisma/client';
 import AdminTradeManager from '@/app/components/admin/AdminTradesManager';
@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
 
 export default async function AdminTradesPage() {
   try {
-
+      
     // Carica tutti i trade con le relazioni complete
     const trades = await prisma.trade.findMany({
       include: {
@@ -64,9 +64,7 @@ export default async function AdminTradesPage() {
                 <a href="/admin/" className="text-gray-600 hover:text-gray-900">
                   ← Torna al pannello
                 </a>
-                <a href="/admin/logout" className="text-red-600 hover:text-red-800">
-                  Logout
-                </a>
+
               </div>
             </div>
           </div>
