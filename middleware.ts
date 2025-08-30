@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Team protection (existing) - semplificata
-  if (pathname.startsWith('/team')) {
+  if (pathname.startsWith('/team') || pathname.startsWith('/change-pwd')) {
     const token = request.cookies.get('auth-token')?.value;
     
     if (!token) {
