@@ -2,6 +2,8 @@
 import { redirect } from 'next/navigation';
 import { PrismaClient } from '@prisma/client';
 import AdminTradeManager from '@/app/components/admin/AdminTradesManager';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';

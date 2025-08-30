@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import TradesManager from '@/app/components/trades/TradesManager';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { checkTradePhaseOpen } from '@/app/lib/tradeValidation';
 
 const prisma = new PrismaClient();
