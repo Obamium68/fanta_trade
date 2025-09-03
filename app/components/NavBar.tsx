@@ -16,7 +16,6 @@ export default function NavBar() {
         { icon: FaInbox, label: "Scambi in arrivo", link: "/incoming" }, // Inbox per le richieste
         { icon: FaFutbol, label: "Squadra", link: "/team" }, // Pallone da calcio per la squadra
         { icon: FaLock, label: "Admin", link: "/admin/" }, // Gestione squadre
-        { icon: FaKey, label: "Cambio password", link: "/change-pwd" } //
     ];
 
     return (
