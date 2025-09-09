@@ -22,7 +22,38 @@ model Team {
   tradesReceived Trade[] @relation("ToTeam")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  pushSubscriptions     PushSubscription[]
+  notificationPreferences NotificationPreference?
 }
+
+model PushSubscription {
+  id           Int      @id @default(autoincrement())
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId       Int
+  endpoint     String
+  p256dh       String
+  auth         String
+  userAgent    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([teamId, endpoint])
+}
+
+model NotificationPreference {
+  id                    Int     @id @default(autoincrement())
+  team                  Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId                Int     @unique
+  tradeProposed         Boolean @default(true)
+  tradeAccepted         Boolean @default(true)
+  tradeRejected         Boolean @default(true)
+  tradeApproved         Boolean @default(true)
+  newTradeReceived      Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
 
 model TeamMember {
   id        Int      @id @default(autoincrement())

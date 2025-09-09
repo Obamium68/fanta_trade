@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { Player, RolePlayer, Team } from '@prisma/client';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface TradeFormProps {
   isGlobal: boolean;

@@ -3,9 +3,9 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import TradesManager from '@/app/components/trades/TradesManager';
+import { checkTradePhaseOpen } from '@/app/lib/tradeValidation';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-import { checkTradePhaseOpen } from '@/app/lib/tradeValidation';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';

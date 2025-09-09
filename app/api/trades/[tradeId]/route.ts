@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { NotificationService } from '@/app/lib/notification-service';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
@@ -83,11 +84,10 @@ export async function PUT(
     const body = await request.json();
     const { action } = updateTradeSchema.parse(body);
 
-    // Trova il trade e verifica che appartenga al team corretto
     const trade = await prisma.trade.findFirst({
       where: {
         id: tradeNumId,
-        toTeamId: decoded.teamId, // Solo il team destinatario può accettare/rifiutare
+        toTeamId: decoded.teamId,
         status: 'PENDING'
       },
       include: {
@@ -108,7 +108,6 @@ export async function PUT(
     }
 
     if (action === 'accept') {
-      // MODIFICATO: Non eseguire immediatamente lo scambio, solo cambiare stato
       const result = await prisma.$transaction(async (tx) => {
         // Ottieni tutti i giocatori coinvolti per validazione
         const playersFrom = trade.tradePlayers.filter(tp => tp.direction === 'FROM');
@@ -145,12 +144,11 @@ export async function PUT(
         }
 
         // Aggiorna solo lo stato del trade - NON eseguire lo scambio
-        const updatedTrade = await tx.trade.update({
+         const updatedTrade = await tx.trade.update({
           where: { id: tradeNumId },
           data: { status: 'ACCEPTED' }
         });
 
-        // Crea log dell'accettazione
         const fromPlayerNames = playersFrom.map(p => p.player.lastname).join(', ');
         const toPlayerNames = playersTo.map(p => p.player.lastname).join(', ');
         
@@ -164,20 +162,25 @@ export async function PUT(
         return updatedTrade;
       });
 
+      // AGGIUNTO: Notifica al team mittente dell'accettazione
+      await NotificationService.notifyTradeAccepted(
+        tradeNumId,
+        trade.fromTeamId,
+        trade.toTeam.name
+      );
+
       return NextResponse.json({ 
         message: 'Trade accettato con successo. In attesa di approvazione admin.',
         trade: result
       });
 
     } else if (action === 'reject') {
-      // Rifiuta il trade
       const updatedTrade = await prisma.$transaction(async (tx) => {
         const result = await tx.trade.update({
           where: { id: tradeNumId },
           data: { status: 'REJECTED' }
         });
 
-        // Crea log del rifiuto
         await tx.tradeLog.create({
           data: {
             tradeId: tradeNumId,
@@ -188,11 +191,19 @@ export async function PUT(
         return result;
       });
 
+      // AGGIUNTO: Notifica al team mittente del rifiuto
+      await NotificationService.notifyTradeRejected(
+        tradeNumId,
+        trade.fromTeamId,
+        trade.toTeam.name
+      );
+
       return NextResponse.json({ 
         message: 'Trade rifiutato',
         trade: updatedTrade
       });
     }
+
 
   } catch (error) {
     if (error instanceof z.ZodError) {

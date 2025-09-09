@@ -256,22 +256,3 @@ export async function GET(request: NextRequest, context: RouteContext) {
         await prisma.$disconnect();
     }
 }
-
-// VERSIONE ALTERNATIVA SENZA RouteContext (più semplice):
-/*
-export async function PUT(
-    request: NextRequest, 
-    { params }: { params: Promise<{ tradeId: string }> }
-) {
-    const { tradeId } = await params;
-    // ... resto del codice
-}
-
-export async function GET(
-    request: NextRequest, 
-    { params }: { params: Promise<{ tradeId: string }> }
-) {
-    const { tradeId } = await params;
-    // ... resto del codice
-}
-*/

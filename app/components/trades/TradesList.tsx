@@ -3,6 +3,9 @@
 
 import { Trade, Team, Player, TradeStatus } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface TradePlayer {
   id: number;
   playerId: number;

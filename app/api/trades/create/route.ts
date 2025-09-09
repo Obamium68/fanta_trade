@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { NotificationService } from '@/app/lib/notification-service';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
+
 
 const createTradeSchema = z.object({
   toTeamId: z.number().positive(),
@@ -165,7 +167,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Ricarica il trade con tutte le relazioni per la risposta
-    const fullTrade = await prisma.trade.findUnique({
+       const fullTrade = await prisma.trade.findUnique({
       where: { id: result.id },
       include: {
         fromTeam: true,
@@ -180,6 +182,13 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // AGGIUNTO: Invia notifica al team destinatario
+    await NotificationService.notifyTradeProposed(
+      result.id,
+      fromTeam.name,
+      validatedData.toTeamId
+    );
 
     return NextResponse.json({ trade: fullTrade });
   } catch (error) {

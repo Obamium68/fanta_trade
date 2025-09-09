@@ -8,6 +8,7 @@ import {
     FaLock,
     FaKey
 } from 'react-icons/fa';
+import { FaExclamation } from 'react-icons/fa6';
 
 export default function NavBar() {
     const items = [
@@ -16,6 +17,7 @@ export default function NavBar() {
         { icon: FaInbox, label: "Scambi in arrivo", link: "/incoming" }, // Inbox per le richieste
         { icon: FaFutbol, label: "Squadra", link: "/team" }, // Pallone da calcio per la squadra
         { icon: FaLock, label: "Admin", link: "/admin/" }, // Gestione squadre
+        { icon: FaExclamation, label: "Notifiche", link: "/notifications" }, // Chiave per le impostazioni
     ];
 
     return (

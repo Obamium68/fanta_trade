@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Team } from '@prisma/client';
 import TradeForm from './TradeForm';
 import TradesList from './TradesList';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface TradesManagerProps {
   isGlobal: boolean;
