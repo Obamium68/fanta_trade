@@ -116,7 +116,7 @@ model TradePlayer {
 
 model TradeLog {
   id        Int      @id @default(autoincrement())
-  trade     Trade    @relation(fields: [tradeId], references: [id])
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
   tradeId   Int
   action    String
   timestamp DateTime @default(now())
