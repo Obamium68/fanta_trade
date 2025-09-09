@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('push', (event) => {
   console.log('Push received:', event);
-  
+
   if (!event.data) {
     return;
   }
@@ -37,40 +37,43 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   console.log('Notification clicked:', event);
-  
+
   event.notification.close();
 
   const data = event.notification.data;
-  
+
   if (event.action === 'dismiss') {
     return;
   }
 
   // Gestisci il click sulla notifica o sui pulsanti
   let url = '/';
-  
+
   if (event.action === 'view' && data?.url) {
     url = data.url;
   } else if (data?.url) {
     url = data.url;
   }
 
+  // Controlla se ci sono finestre già aperte
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Controlla se c'è già una finestra aperta
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(url);
-          return client.focus();
-        }
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const appIsVisible = clientList.some((client) => client.visibilityState === "visible");
+
+      // Se l'app è visibile, mostriamo comunque la notifica
+      if (appIsVisible) {
+        return self.registration.showNotification(data.title, {
+          ...options,
+          renotify: true,          // forza il popup anche se la tab è aperta
+          requireInteraction: true // la notifica resta finché l'utente non la chiude
+        });
       }
-      
-      // Apri una nuova finestra se non ce n'è una aperta
-      if (clients.openWindow) {
-        return clients.openWindow(url);
-      }
+
+      // Se l'app è in background o chiusa → mostra la notifica normale
+      return self.registration.showNotification(data.title, options);
     })
   );
+
 });
 
 self.addEventListener('notificationclose', (event) => {
