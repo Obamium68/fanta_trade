@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import IncomingTrades from '@/app/components/trades/IncomingTrades';
+import { verifyToken } from '@/app/lib/auth';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -18,7 +19,7 @@ export default async function IncomingTradesPage() {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = verifyToken(token) as any;
     
     const team = await prisma.team.findUnique({
       where: { id: decoded.teamId }

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import TradesManager from '@/app/components/trades/TradesManager';
 import { checkTradePhaseOpen } from '@/app/lib/tradeValidation';
+import { verifyToken } from '@/app/lib/auth';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -27,7 +28,7 @@ export default async function GlobalTradesPage() {
     )
   }
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+   const decoded = verifyToken(token) as any;
 
     const team = await prisma.team.findUnique({
       where: { id: decoded.teamId },

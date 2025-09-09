@@ -22,7 +22,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body,
     icon: data.icon || '/icon-192x192.png',
-    badge: data.badge || '/badge-72x72.png',
+    badge: data.badge || '/icon-72x72.png',
     tag: data.tag,
     data: data.data,
     actions: data.actions || [],

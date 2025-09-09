@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { NotificationService } from '@/app/lib/notification-service';
+import { verifyToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
@@ -28,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = verifyToken(token) as any;
 
     const { tradeId } = await context.params;
     const tradeIdNum = parseInt(tradeId);
@@ -79,7 +80,7 @@ export async function PUT(
 
     const { tradeId } = await context.params;
     const tradeNumId = parseInt(tradeId);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = verifyToken(token) as any;
     
     const body = await request.json();
     const { action } = updateTradeSchema.parse(body);
@@ -232,7 +233,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = verifyToken(token) as any;
     const tradeId = parseInt((await context.params).tradeId);
 
     // Solo il creatore può cancellare un trade in sospeso o accettato ma non ancora approvato

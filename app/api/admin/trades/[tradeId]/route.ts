@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { verifyToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
@@ -29,7 +30,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = verifyToken(token) as any;
         if (decoded.role !== 'admin') {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
         }
@@ -221,7 +222,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
         }
 
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = verifyToken(token) as any;
         if (decoded.role !== 'admin') {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
         }

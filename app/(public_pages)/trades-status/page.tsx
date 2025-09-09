@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import MainLayout from '@/app/components/layout/MainLayout';
 import TradeStatusList from '@/app/components/trades/TradesStatusList';
+import { verifyToken } from '@/app/lib/auth';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
@@ -17,7 +18,7 @@ export default async function TradesStatusPage() {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = verifyToken(token) as any;
 
     const team = await prisma.team.findUnique({
       where: { id: decoded.teamId }
