@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
 
@@ -43,7 +42,7 @@ export async function middleware(request: NextRequest) {
     }
     
     try {
-      const decoded = await jwt.verify(adminToken, JWT_SECRET) as any;
+      const decoded = await verifyToken(adminToken);
       if (decoded.role !== 'admin') {
         throw new Error('Invalid role');
       }
