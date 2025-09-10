@@ -12,7 +12,6 @@ async function verifyToken(token: string): Promise<any> {
     
     // Decodifica il payload (per semplicità, non verifichiamo la firma nel middleware)
     const decodedPayload = JSON.parse(atob(payload));
-    console.log('Decoded Payload:', decodedPayload);
     
     // Verifica scadenza
     if (decodedPayload.exp && Date.now() >= decodedPayload.exp * 1000) {
