@@ -30,7 +30,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
         }
 
-        const decoded = verifyToken(token) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         if (decoded.role !== 'admin') {
             return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
         }
